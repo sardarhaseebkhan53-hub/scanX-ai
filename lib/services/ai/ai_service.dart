@@ -179,55 +179,32 @@ class PluggableAIService implements AIService {
           : '• Summary: Brief scanned note containing "${ocrText.trim()}".';
       return AIAnalysisResult(summary: summary, suggestedTitle: _inferTitleFromText(firstLine));
     } else if (promptType == 'invoice') {
-      return const AIAnalysisResult(
-        invoiceNumber: 'INV-2026-08942',
-        vendorName: 'Sardar Haseeb Technologies',
-        date: '2026-08-02',
-        subtotal: 1450.00,
-        tax: 116.00,
-        totalAmount: 1566.00,
-        currency: 'USD',
-        items: [
-          {
-            'description': 'Enterprise API Gateway License (Annual)',
-            'quantity': 1,
-            'unitPrice': 1200.00,
-            'totalPrice': 1200.00
-          },
-          {
-            'description': '24/7 Dedicated AI Infrastructure Support',
-            'quantity': 1,
-            'unitPrice': 250.00,
-            'totalPrice': 250.00
-          }
-        ],
-        suggestedTitle: 'SardarHaseeb_Invoice_8942',
-        suggestedFolderName: 'Invoices 2026',
+      final amounts = _extractMoneyAmounts(ocrText);
+      final total = amounts.isNotEmpty ? amounts.reduce((a, b) => a > b ? a : b) : null;
+      final subtotal = amounts.length > 1 ? amounts.where((a) => a != total).fold<double>(0, (sum, a) => sum + a) : null;
+      return AIAnalysisResult(
+        invoiceNumber: _extractInvoiceNumber(ocrText),
+        vendorName: _extractVendorName(lines),
+        date: _extractDocumentDate(ocrText),
+        subtotal: subtotal,
+        tax: total != null && subtotal != null && total >= subtotal ? total - subtotal : null,
+        totalAmount: total,
+        currency: _detectCurrency(ocrText),
+        items: _extractLineItems(lines),
+        suggestedTitle: _inferTitleFromText('${_extractVendorName(lines)} Invoice'),
+        suggestedFolderName: 'Invoices',
       );
     } else if (promptType == 'receipt') {
-      return const AIAnalysisResult(
-        vendorName: 'Sardar Haseeb Technologies Store',
-        date: '2026-08-02',
-        subtotal: 24.50,
-        tax: 2.21,
-        totalAmount: 26.71,
-        currency: 'USD',
-        items: [
-          {
-            'description': 'Single Origin Espresso (2)',
-            'quantity': 2,
-            'unitPrice': 5.50,
-            'totalPrice': 11.00
-          },
-          {
-            'description': 'Almond Croissant',
-            'quantity': 1,
-            'unitPrice': 6.50,
-            'totalPrice': 6.50
-          }
-        ],
-        suggestedTitle: 'SardarHaseeb_Receipt_Aug02',
-        suggestedFolderName: 'Receipts & Expense Reports',
+      final amounts = _extractMoneyAmounts(ocrText);
+      final total = amounts.isNotEmpty ? amounts.reduce((a, b) => a > b ? a : b) : null;
+      return AIAnalysisResult(
+        vendorName: _extractVendorName(lines),
+        date: _extractDocumentDate(ocrText),
+        totalAmount: total,
+        currency: _detectCurrency(ocrText),
+        items: _extractLineItems(lines),
+        suggestedTitle: _inferTitleFromText('${_extractVendorName(lines)} Receipt'),
+        suggestedFolderName: 'Receipts',
       );
     } else if (promptType == 'rewrite') {
       final polished = 'PROFESSIONAL BUSINESS REWRITE:\n\n${lines.map((l) => "${l.trim()}.").join(" ")} All statements have been formatted for executive communication.';
@@ -260,6 +237,69 @@ class PluggableAIService implements AIService {
         suggestedTitle: _inferTitleFromText(firstLine),
       );
     }
+  }
+
+  String? _extractInvoiceNumber(String text) {
+    final match = RegExp(r'\b(?:invoice|inv|bill)\s*(?:no\.?|#|number)?\s*[:#-]?\s*([A-Z0-9-]{3,})', caseSensitive: false).firstMatch(text);
+    return match?.group(1);
+  }
+
+  String _extractVendorName(List<String> lines) {
+    for (final line in lines.take(6)) {
+      final clean = line.trim();
+      if (clean.length >= 3 && clean.length <= 60 && !RegExp(r'\d{2,}').hasMatch(clean)) {
+        return clean;
+      }
+    }
+    return lines.isNotEmpty ? lines.first.trim() : 'Scanned Document';
+  }
+
+  String? _extractDocumentDate(String text) {
+    final match = RegExp(
+      r'\b(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|[A-Z][a-z]{2,8}\s+\d{1,2},\s+\d{4})\b',
+    ).firstMatch(text);
+    return match?.group(0);
+  }
+
+  String _detectCurrency(String text) {
+    if (text.contains('Rs') || text.contains('PKR')) return 'PKR';
+    if (text.contains('AED')) return 'AED';
+    if (text.contains('SAR')) return 'SAR';
+    if (text.contains('€') || text.contains('EUR')) return 'EUR';
+    if (text.contains('£') || text.contains('GBP')) return 'GBP';
+    if (text.contains(r'$') || text.contains('USD')) return 'USD';
+    return 'USD';
+  }
+
+  List<double> _extractMoneyAmounts(String text) {
+    final regex = RegExp(r'(?:USD|PKR|AED|SAR|EUR|GBP|Rs\.?|[$€£])?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+\.\d{1,2})');
+    return regex
+        .allMatches(text)
+        .map((m) => double.tryParse((m.group(1) ?? '').replaceAll(',', '')))
+        .whereType<double>()
+        .where((v) => v > 0)
+        .toList();
+  }
+
+  List<Map<String, dynamic>> _extractLineItems(List<String> lines) {
+    final items = <Map<String, dynamic>>[];
+    final amountRegex = RegExp(r'(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+\.\d{1,2})\s*$');
+    for (final line in lines) {
+      final match = amountRegex.firstMatch(line.trim());
+      if (match == null) continue;
+      final amount = double.tryParse(match.group(1)!.replaceAll(',', ''));
+      final description = line.substring(0, match.start).trim();
+      if (amount != null && description.length > 2) {
+        items.add({
+          'description': description,
+          'quantity': 1,
+          'unitPrice': amount,
+          'totalPrice': amount,
+        });
+      }
+      if (items.length >= 12) break;
+    }
+    return items;
   }
 
   String _inferTitleFromText(String text) {

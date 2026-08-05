@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/logger/app_logger.dart';
 import '../../models/document_item.dart';
-import '../../models/folder_item.dart';
 import '../storage/local_storage_service.dart';
 
 enum SyncStatus { idle, syncing, synced, error, offline }
@@ -36,7 +34,9 @@ class CloudSyncService {
 
   void _setStatus(SyncStatus status) {
     _currentStatus = status;
-    _syncStatusController.add(status);
+    if (!_syncStatusController.isClosed) {
+      _syncStatusController.add(status);
+    }
   }
 
   Future<void> syncAll() async {
@@ -93,9 +93,12 @@ class CloudSyncService {
   }
 
   Future<bool> connectProvider(String providerName) async {
-    AppLogger.i('Connecting external cloud backup provider: $providerName', _tag);
-    // Google Drive, Dropbox, OneDrive OAuth adapters
-    return true;
+    AppLogger.i('Requested external cloud provider connection: $providerName', _tag);
+    // External Drive/Dropbox/OneDrive OAuth clients require provider-specific
+    // app ids and redirect URIs. Do not report a successful connection until a
+    // real adapter is configured; Firebase cloud sync remains the production
+    // cloud channel in this build.
+    return false;
   }
 
   void dispose() {

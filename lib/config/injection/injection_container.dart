@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
@@ -49,13 +51,17 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<SecurityService>(
       () => SecurityService(secureStorage: sl<SecureStorageService>()));
 
+  // Register monetization services immediately and initialize them in the
+  // background. This keeps cold start/home rendering fast while still allowing
+  // the paywall/ad surfaces to observe live readiness when Google Play services
+  // finish loading.
   final billingService = BillingService();
-  await billingService.init();
   sl.registerSingleton<BillingService>(billingService);
+  unawaited(billingService.init());
 
   final adService = AdService();
-  await adService.init();
   sl.registerSingleton<AdService>(adService);
+  unawaited(adService.init());
 
   // Data Sources
   sl.registerLazySingleton<HiveLocalDataSource>(

@@ -88,37 +88,48 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
                       ],
                     ),
                   ),
-                  if (st.isSelectionMode) ...[
-                    IconButton(icon: const Icon(Icons.select_all_rounded, color: Colors.white70, size: 20), onPressed: () => controller.selectAllDocuments()),
-                    const SizedBox(width: 4),
-                    _BatchButton(icon: Icons.merge_rounded, color: AppColors.neonCyan, onTap: () async {
-                      final id = await controller.batchMergeSelected();
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text(id == null ? 'Select at least 2 documents to merge' : 'Documents merged into one PDF'),
-                          backgroundColor: const Color(0xFF151D3F),
-                          action: id == null ? null : SnackBarAction(label: 'VIEW', textColor: AppColors.neonCyan, onPressed: () => context.push(RouteNames.ocrViewer, extra: id)),
-                        ));
-                      }
-                    }),
-                    const SizedBox(width: 6),
-                    _BatchButton(icon: Icons.lock_rounded, color: AppColors.neonPurple, onTap: () async {
-                      await controller.batchLockSelected();
-                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Secured in AES-256 Hidden Vault'), backgroundColor: Color(0xFF151D3F)));
-                    }),
-                    const SizedBox(width: 6),
-                    _BatchButton(icon: Icons.archive_rounded, color: AppColors.neonAmber, onTap: () async {
-                      await controller.batchArchiveSelected();
-                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Archived to Archive Vault'), backgroundColor: Color(0xFF151D3F)));
-                    }),
-                    const SizedBox(width: 6),
-                    _BatchButton(icon: Icons.delete_sweep_rounded, color: AppColors.error, onTap: () async {
-                      await controller.batchDeleteSelected();
-                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deleted'), backgroundColor: Color(0xFF151D3F)));
-                    }),
-                    const SizedBox(width: 6),
-                    GestureDetector(onTap: () => controller.toggleSelectionMode(false), child: Container(width: 34, height: 34, decoration: BoxDecoration(color: Colors.white.withOpacity(0.07), shape: BoxShape.circle), child: const Icon(Icons.close_rounded, color: Colors.white70, size: 16))),
-                  ] else
+                  if (st.isSelectionMode)
+                    Flexible(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        reverse: true,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(icon: const Icon(Icons.select_all_rounded, color: Colors.white70, size: 20), onPressed: () => controller.selectAllDocuments()),
+                            const SizedBox(width: 4),
+                            _BatchButton(icon: Icons.merge_rounded, color: AppColors.neonCyan, onTap: () async {
+                              final id = await controller.batchMergeSelected();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                  content: Text(id == null ? 'Select at least 2 documents to merge' : 'Documents merged into one PDF'),
+                                  backgroundColor: const Color(0xFF151D3F),
+                                  action: id == null ? null : SnackBarAction(label: 'VIEW', textColor: AppColors.neonCyan, onPressed: () => context.push(RouteNames.ocrViewer, extra: id)),
+                                ));
+                              }
+                            }),
+                            const SizedBox(width: 6),
+                            _BatchButton(icon: Icons.lock_rounded, color: AppColors.neonPurple, onTap: () async {
+                              await controller.batchLockSelected();
+                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Secured in AES-256 Hidden Vault'), backgroundColor: Color(0xFF151D3F)));
+                            }),
+                            const SizedBox(width: 6),
+                            _BatchButton(icon: Icons.archive_rounded, color: AppColors.neonAmber, onTap: () async {
+                              await controller.batchArchiveSelected();
+                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Archived to Archive Vault'), backgroundColor: Color(0xFF151D3F)));
+                            }),
+                            const SizedBox(width: 6),
+                            _BatchButton(icon: Icons.delete_sweep_rounded, color: AppColors.error, onTap: () async {
+                              await controller.batchDeleteSelected();
+                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deleted'), backgroundColor: Color(0xFF151D3F)));
+                            }),
+                            const SizedBox(width: 6),
+                            GestureDetector(onTap: () => controller.toggleSelectionMode(false), child: Container(width: 34, height: 34, decoration: BoxDecoration(color: Colors.white.withOpacity(0.07), shape: BoxShape.circle), child: const Icon(Icons.close_rounded, color: Colors.white70, size: 16))),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
                     GestureDetector(
                       onTap: () => _showCreateFolderDialog(controller),
                       child: Container(

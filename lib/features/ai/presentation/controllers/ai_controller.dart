@@ -1,5 +1,5 @@
-import 'dart:convert';
-import 'package:flutter/services.dart' show rootBundle;
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../config/injection/injection_container.dart';
 import '../../../../domain/repositories/ai_repository.dart';
@@ -67,6 +67,7 @@ class AIController extends StateNotifier<AIState> {
 
     try {
       final doc = await _documentRepo.getDocumentById(documentId);
+      if (!mounted) return;
       if (doc == null) {
         state = state.copyWith(isLoading: false, errorMessage: 'Document not found.');
         return;
@@ -92,6 +93,7 @@ class AIController extends StateNotifier<AIState> {
       // Extract semantic keywords and tags
       final aiService = sl<AIService>();
       final tags = await aiService.extractKeywordsAndTags(text);
+      if (!mounted) return;
 
       state = state.copyWith(
         analysisResult: res,
@@ -107,24 +109,21 @@ class AIController extends StateNotifier<AIState> {
   Future<void> analyzeReceiptOrInvoice({bool isInvoice = false}) async {
     state = state.copyWith(isAnalyzing: true);
     try {
-      if (state.document?.ocrText != null && state.document!.ocrText!.trim().isNotEmpty) {
-        final res = await _aiRepo.analyzeDocument(
-          ocrText: state.document!.ocrText!,
-          promptType: isInvoice ? 'invoice' : 'receipt',
-        );
-        state = state.copyWith(analysisResult: res, isAnalyzing: false);
-      } else {
-        // Load mock receipt/invoice data from assets if no OCR text
-        final jsonPath = isInvoice
-            ? 'assets/mock/sample_invoice.json'
-            : 'assets/mock/sample_receipt.json';
-        final jsonStr = await rootBundle.loadString(jsonPath);
-        final map = jsonDecode(jsonStr);
+      final ocrText = state.document?.ocrText?.trim() ?? '';
+      if (ocrText.isEmpty) {
         state = state.copyWith(
-          analysisResult: AIAnalysisResult.fromMap(map),
           isAnalyzing: false,
+          errorMessage: 'No OCR text is available for this document. Run OCR first, then analyze ${isInvoice ? 'the invoice' : 'the receipt'}.',
         );
+        return;
       }
+
+      final res = await _aiRepo.analyzeDocument(
+        ocrText: ocrText,
+        promptType: isInvoice ? 'invoice' : 'receipt',
+      );
+      if (!mounted) return;
+      state = state.copyWith(analysisResult: res, isAnalyzing: false);
     } catch (e) {
       state = state.copyWith(isAnalyzing: false, errorMessage: e.toString());
     }
@@ -158,6 +157,6 @@ class AIController extends StateNotifier<AIState> {
 
 final aiProvider = StateNotifierProvider.family<AIController, AIState, String?>((ref, docId) {
   final controller = AIController();
-  controller.init(docId);
+  unawaited(controller.init(docId));
   return controller;
 });

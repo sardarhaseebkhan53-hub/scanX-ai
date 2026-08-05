@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
@@ -28,16 +29,12 @@ class _PdfEditorScreenState extends ConsumerState<PdfEditorScreen> {
           IconButton(
             icon: const Icon(Icons.undo_rounded),
             tooltip: 'Undo',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Undo last annotation/edit')),
-              );
-            },
+            onPressed: controller.undoLastAction,
           ),
           IconButton(
             icon: const Icon(Icons.redo_rounded),
             tooltip: 'Redo',
-            onPressed: () {},
+            onPressed: controller.redoLastAction,
           ),
           if (state.isPasswordProtected) ...[
             const Center(child: SecureBadge(isEncrypted: true)),
@@ -98,10 +95,13 @@ class _PdfEditorScreenState extends ConsumerState<PdfEditorScreen> {
                 Expanded(
                   child: state.pagePaths.isEmpty
                       ? const Center(child: Text('No pages found.'))
-                      : GridView.builder(
+                      : LayoutBuilder(
+                          builder: (context, constraints) {
+                            final columns = (constraints.maxWidth / 210).floor().clamp(1, 5).toInt();
+                            return GridView.builder(
                           padding: const EdgeInsets.all(16),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: columns,
                             childAspectRatio: 0.68,
                             crossAxisSpacing: 16,
                             mainAxisSpacing: 16,
@@ -196,6 +196,8 @@ class _PdfEditorScreenState extends ConsumerState<PdfEditorScreen> {
                               ],
                             );
                           },
+                        );
+                          },
                         ),
                 ),
 
@@ -206,9 +208,10 @@ class _PdfEditorScreenState extends ConsumerState<PdfEditorScreen> {
                     color: Theme.of(context).cardTheme.color,
                     border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.18))),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
                       _buildBottomTool(
                         icon: Icons.title_rounded,
                         label: 'Add Text',
@@ -232,10 +235,11 @@ class _PdfEditorScreenState extends ConsumerState<PdfEditorScreen> {
                       _buildBottomTool(
                         icon: Icons.more_horiz_rounded,
                         label: 'More',
-                        onTap: () => _showMoreToolsModal(context, controller),
+                        onTap: () => _showMoreToolsModal(context, controller, state.pagePaths.length),
                       ),
                     ],
                   ),
+                ),
                 ),
               ],
             ),
@@ -272,14 +276,14 @@ class _PdfEditorScreenState extends ConsumerState<PdfEditorScreen> {
     );
   }
 
-  void _showMoreToolsModal(BuildContext context, PdfController controller) {
+  void _showMoreToolsModal(BuildContext context, PdfController controller, int totalPages) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -331,7 +335,7 @@ class _PdfEditorScreenState extends ConsumerState<PdfEditorScreen> {
                     label: const Text('Split PDF'),
                     onPressed: () {
                       Navigator.of(ctx).pop();
-                      _showSplitDialog(context, controller, 3);
+                      _showSplitDialog(context, controller, totalPages);
                     },
                   ),
                   ActionChip(
@@ -477,7 +481,7 @@ class _PdfEditorScreenState extends ConsumerState<PdfEditorScreen> {
   }
 
   void _showMergeDialog(BuildContext context, PdfController controller) {
-    final docIdController = TextEditingController(text: 'doc_target_sample');
+    final docIdController = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -575,7 +579,7 @@ class _PdfEditorScreenState extends ConsumerState<PdfEditorScreen> {
                 ),
                 alignment: Alignment.center,
                 child: const Text(
-                  'Signature Canvas\n(Touch & Drag to Sign)',
+                  'Draw your signature here\n(Touch & drag support ready)',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.black54),
                 ),
@@ -594,9 +598,7 @@ class _PdfEditorScreenState extends ConsumerState<PdfEditorScreen> {
                     child: ElevatedButton(
                       onPressed: () {
                         Navigator.of(ctx).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Embedded cryptographic digital signature into PDF!')),
-                        );
+                        controller.embedSignature(Uint8List.fromList(DateTime.now().toIso8601String().codeUnits));
                       },
                       child: const Text('Sign PDF'),
                     ),

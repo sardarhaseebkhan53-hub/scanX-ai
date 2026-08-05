@@ -61,6 +61,7 @@ class _ScanPreviewScreenState extends ConsumerState<ScanPreviewScreen> {
     try {
       final origFile = File(_paths[_currentPageIndex]);
       final newFile = await _imageProcessor.applyFilterPreset(origFile, mode.name);
+      if (!mounted) return;
       if (newFile != null) {
         setState(() {
           _paths[_currentPageIndex] = newFile.path;
@@ -70,7 +71,7 @@ class _ScanPreviewScreenState extends ConsumerState<ScanPreviewScreen> {
         setState(() => _isProcessing = false);
       }
     } catch (_) {
-      setState(() => _isProcessing = false);
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
@@ -85,21 +86,20 @@ class _ScanPreviewScreenState extends ConsumerState<ScanPreviewScreen> {
         saturation: _saturation,
         sharpness: _sharpness,
       );
+      if (!mounted) return;
       if (newFile != null) {
         setState(() {
           _paths[_currentPageIndex] = newFile.path;
           _isProcessing = false;
         });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Applied real color adjustments to image pixels!')),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Applied real color adjustments to image pixels!')),
+        );
       } else {
         setState(() => _isProcessing = false);
       }
     } catch (_) {
-      setState(() => _isProcessing = false);
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
@@ -552,11 +552,6 @@ class _ScanPreviewScreenState extends ConsumerState<ScanPreviewScreen> {
                             });
                             setState(() {});
                           },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.redo_rounded),
-                          tooltip: 'Redo slider change',
-                          onPressed: () {},
                         ),
                         TextButton(
                           onPressed: () {

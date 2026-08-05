@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../config/injection/injection_container.dart';
 import '../../../../models/app_settings.dart';
@@ -16,12 +18,12 @@ class SettingsController extends StateNotifier<AppSettings> {
   })  : _localStorage = localStorage ?? sl<LocalStorageService>(),
         _secureStorage = secureStorage ?? sl<SecureStorageService>(),
         super(const AppSettings()) {
-    _loadSettings();
+    unawaited(_loadSettings());
   }
 
   Future<void> _loadSettings() async {
     final s = await _localStorage.getSettings();
-    state = s;
+    if (mounted) state = s;
   }
 
   Future<void> setThemeMode(String mode) async {

@@ -314,7 +314,7 @@ class _QrGeneratorScreenState extends ConsumerState<QrGeneratorScreen> {
               _contentController.text =
                   'BEGIN:VEVENT\nSUMMARY:ScanX AI Executive Review\nDTSTART:20260810T090000Z\nDTEND:20260810T100000Z\nLOCATION:Islamabad HQ\nEND:VEVENT';
             } else if (type == 'barcode') {
-              _contentController.text = '9780201379624'; // Standard ISBN / EAN-13 sample
+              _contentController.text = '9780201379624';
             } else if (type == 'url') {
               _contentController.text = 'https://sardarhaseeb.com';
             } else if (type == 'email') {
@@ -328,7 +328,7 @@ class _QrGeneratorScreenState extends ConsumerState<QrGeneratorScreen> {
 
           if (type == 'clipboard') {
             final data = await Clipboard.getData(Clipboard.kTextPlain);
-            final text = data?.text ?? 'https://sardarhaseeb.com';
+            final text = data?.text?.trim() ?? '';
             setState(() {
               _titleController.text = 'Clipboard Content QR';
               _contentController.text = text;

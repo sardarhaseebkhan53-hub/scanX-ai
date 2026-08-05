@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../config/injection/injection_container.dart';
 import '../../../../domain/repositories/document_repository.dart';
 import '../../../../models/document_item.dart';
 import '../../../../models/folder_item.dart';
 import '../../../../services/pdf/pdf_service.dart';
+
+const Object _unset = Object();
 
 class HomeState {
   final List<DocumentItem> documents;
@@ -40,8 +44,8 @@ class HomeState {
     List<DocumentItem>? documents,
     List<FolderItem>? folders,
     bool? isLoading,
-    String? selectedFolderId,
-    String? selectedTag,
+    Object? selectedFolderId = _unset,
+    Object? selectedTag = _unset,
     String? searchQuery,
     bool? isTrashView,
     bool? isArchiveView,
@@ -55,8 +59,8 @@ class HomeState {
       documents: documents ?? this.documents,
       folders: folders ?? this.folders,
       isLoading: isLoading ?? this.isLoading,
-      selectedFolderId: selectedFolderId,
-      selectedTag: selectedTag,
+      selectedFolderId: selectedFolderId == _unset ? this.selectedFolderId : selectedFolderId as String?,
+      selectedTag: selectedTag == _unset ? this.selectedTag : selectedTag as String?,
       searchQuery: searchQuery ?? this.searchQuery,
       isTrashView: isTrashView ?? this.isTrashView,
       isArchiveView: isArchiveView ?? this.isArchiveView,
@@ -76,7 +80,7 @@ class HomeController extends StateNotifier<HomeState> {
   HomeController({DocumentRepository? repository})
       : _repository = repository ?? sl<DocumentRepository>(),
         super(const HomeState()) {
-    loadData();
+    unawaited(loadData());
   }
 
   Future<void> loadData() async {
@@ -90,6 +94,8 @@ class HomeController extends StateNotifier<HomeState> {
         isTrashed: state.isTrashView,
         isArchived: state.isArchiveView ? true : null,
       );
+
+      if (!mounted) return;
 
       // Apply sorting ('date', 'title', 'size')
       docs.sort((a, b) {
@@ -114,22 +120,22 @@ class HomeController extends StateNotifier<HomeState> {
 
   void selectFolder(String? folderId) {
     state = state.copyWith(selectedFolderId: folderId, isSelectionMode: false, selectedDocIds: {});
-    loadData();
+    unawaited(loadData());
   }
 
   void selectTag(String? tag) {
     state = state.copyWith(selectedTag: tag, isSelectionMode: false, selectedDocIds: {});
-    loadData();
+    unawaited(loadData());
   }
 
   void setSearchQuery(String query) {
     state = state.copyWith(searchQuery: query);
-    loadData();
+    unawaited(loadData());
   }
 
   void setSortBy(String sortBy) {
     state = state.copyWith(sortBy: sortBy);
-    loadData();
+    unawaited(loadData());
   }
 
   void toggleTrashView() {
@@ -139,7 +145,7 @@ class HomeController extends StateNotifier<HomeState> {
       isSelectionMode: false,
       selectedDocIds: {},
     );
-    loadData();
+    unawaited(loadData());
   }
 
   void toggleArchiveView() {
@@ -149,7 +155,7 @@ class HomeController extends StateNotifier<HomeState> {
       isSelectionMode: false,
       selectedDocIds: {},
     );
-    loadData();
+    unawaited(loadData());
   }
 
   // Selection Mode Methods

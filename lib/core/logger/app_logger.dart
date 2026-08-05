@@ -19,12 +19,12 @@ class AppLogger {
     final logMessage = '$timestamp $levelName $tagName $message';
 
     if (kDebugMode) {
-      print(logMessage);
+      debugPrint(logMessage);
       if (error != null) {
-        print('Error: $error');
+        debugPrint('Error: $error');
       }
       if (stackTrace != null) {
-        print('Stack: $stackTrace');
+        debugPrint('Stack: $stackTrace');
       }
     }
   }

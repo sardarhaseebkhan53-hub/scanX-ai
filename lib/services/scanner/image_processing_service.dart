@@ -66,8 +66,9 @@ class ImageProcessingService {
       final image = img.decodeImage(bytes);
       if (image == null) return null;
 
-      final rotated = img.copyRotate(image, angle: angleDegrees);
-      final encoded = img.encodeJpg(rotated, quality: 88);
+      final normalizedAngle = angleDegrees % 360;
+      final rotated = img.copyRotate(image, angle: normalizedAngle);
+      final encoded = img.encodeJpg(rotated, quality: 100);
 
       final tempDir = await getTemporaryDirectory();
       final outFile = File('${tempDir.path}/rot_${DateTime.now().millisecondsSinceEpoch}.jpg');
@@ -113,7 +114,7 @@ class ImageProcessingService {
       await outFile.writeAsBytes(encoded);
 
       final newSize = await outFile.length();
-      final savings = ((origSize - newSize) / origSize * 100).round();
+      final savings = origSize > 0 ? ((origSize - newSize) / origSize * 100).round() : 0;
 
       AppLogger.i('Compressed image $origSize -> $newSize bytes ($savings% savings)', _tag);
       return {
@@ -135,37 +136,56 @@ class ImageProcessingService {
       final image = img.decodeImage(bytes);
       if (image == null) return null;
 
+      if (filterModeName == 'original') {
+        return imageFile;
+      }
+
       img.Image processed;
 
       switch (filterModeName) {
         case 'blackAndWhite':
-        case 'highContrast':
           processed = img.grayscale(image);
-          processed = img.contrast(processed, contrast: 150);
+          processed = img.contrast(processed, contrast: 175);
+          break;
+        case 'highContrast':
+          processed = img.adjustColor(image, contrast: 1.45, brightness: 1.04, saturation: 0.92);
+          processed = img.convolution(processed, filter: [0, -1, 0, -1, 5, -1, 0, -1, 0]);
           break;
         case 'grayscale':
+          processed = img.grayscale(image);
+          processed = img.contrast(processed, contrast: 118);
+          break;
         case 'receipt':
         case 'book':
           processed = img.grayscale(image);
-          processed = img.contrast(processed, contrast: 120);
+          processed = img.adjustColor(processed, brightness: 1.10, contrast: 1.28);
+          break;
+        case 'signature':
+          processed = img.grayscale(image);
+          processed = img.contrast(processed, contrast: 190);
+          break;
+        case 'passport':
+        case 'photo':
+          processed = img.adjustColor(image, saturation: 1.08, contrast: 1.08, brightness: 1.02);
           break;
         case 'color':
         case 'autoEnhanced':
         case 'magazine':
         case 'aiEnhance':
-          processed = img.adjustColor(image, saturation: 1.25, contrast: 1.15);
+          processed = _enhanceDocument(image);
           break;
         case 'aiSharpen':
+          processed = _enhanceDocument(image);
           processed = img.convolution(
-            image,
-            filter: [0, -1, 0, -1, 5, -1, 0, -1, 0], // Sharpen kernel
+            processed,
+            filter: [0, -1, 0, -1, 5, -1, 0, -1, 0],
           );
           break;
         default:
           processed = image;
       }
 
-      final encoded = img.encodeJpg(processed, quality: 88);
+      final encoded = img.encodeJpg(processed, quality: 95);
       final tempDir = await getTemporaryDirectory();
       final outFile = File('${tempDir.path}/filt_${filterModeName}_${DateTime.now().millisecondsSinceEpoch}.jpg');
       await outFile.writeAsBytes(encoded);
@@ -176,6 +196,21 @@ class ImageProcessingService {
       AppLogger.e('Error applying filter preset: $e', tag: _tag);
       return null;
     }
+  }
+
+  img.Image _enhanceDocument(img.Image image) {
+    var processed = img.adjustColor(
+      image,
+      brightness: 1.06,
+      contrast: 1.24,
+      saturation: 1.14,
+      gamma: 0.92,
+    );
+    processed = img.convolution(
+      processed,
+      filter: [0, -1, 0, -1, 5, -1, 0, -1, 0],
+    );
+    return processed;
   }
 
   Future<File?> applyManualAdjustments(
@@ -206,7 +241,7 @@ class ImageProcessingService {
         );
       }
 
-      final encoded = img.encodeJpg(processed, quality: 88);
+      final encoded = img.encodeJpg(processed, quality: 95);
       final tempDir = await getTemporaryDirectory();
       final outFile = File('${tempDir.path}/adj_${DateTime.now().millisecondsSinceEpoch}.jpg');
       await outFile.writeAsBytes(encoded);
