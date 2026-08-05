@@ -5,7 +5,6 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/logger/app_logger.dart';
-import '../../models/qr_item.dart';
 
 class QRService {
   static const String _tag = 'QRService';

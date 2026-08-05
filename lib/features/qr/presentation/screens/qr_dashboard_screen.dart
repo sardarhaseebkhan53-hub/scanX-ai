@@ -31,7 +31,6 @@ class _QrDashboardScreenState extends ConsumerState<QrDashboardScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(qrProvider);
     final controller = ref.read(qrProvider.notifier);
-    final colorScheme = Theme.of(context).colorScheme;
 
     final items = _showFavoritesOnly ? state.favoriteItems : state.filteredHistory;
 

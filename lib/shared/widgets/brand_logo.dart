@@ -31,6 +31,17 @@ class _LogoPainter extends CustomPainter {
         Rect.fromLTRB(l * k, t * k, r2 * k, b * k);
     Offset p(double x, double y) => Offset(x * k, y * k);
 
+    // Path.moveTo/lineTo take (double, double) — not Offset — so build
+    // polygons from the scaled Offsets produced by p().
+    Path poly(List<Offset> pts, {bool close = true}) {
+      final path = Path()..moveTo(pts.first.dx, pts.first.dy);
+      for (final pt in pts.skip(1)) {
+        path.lineTo(pt.dx, pt.dy);
+      }
+      if (close) path.close();
+      return path;
+    }
+
     final borderGrad = LinearGradient(
       colors: const [Color(0xFFD43BF7), Color(0xFF8B5CF6), Color(0xFF3B82F6), Color(0xFF2FE9FF)],
       begin: Alignment.topLeft,
@@ -72,10 +83,7 @@ class _LogoPainter extends CustomPainter {
 
     // Corner brackets
     void bracket(List<Offset> pts, Color color) {
-      final path = Path()
-        ..moveTo(pts[0])
-        ..lineTo(pts[1])
-        ..lineTo(pts[2]);
+      final path = poly(pts, close: false);
       final paint = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 30 * k
@@ -96,12 +104,7 @@ class _LogoPainter extends CustomPainter {
     bracket([p(718, 812), p(828, 812), p(828, 702)], const Color(0xFF38D5F7));
 
     // Scanner tray
-    final trayPath = Path()
-      ..moveTo(p(306, 640))
-      ..lineTo(p(718, 640))
-      ..lineTo(p(772, 780))
-      ..lineTo(p(252, 780))
-      ..close();
+    final trayPath = poly([p(306, 640), p(718, 640), p(772, 780), p(252, 780)]);
     canvas.drawPath(trayPath, Paint()
       ..style = PaintingStyle.fill
       ..shader = const LinearGradient(
@@ -116,24 +119,14 @@ class _LogoPainter extends CustomPainter {
       ..shader = LinearGradient(colors: const [Color(0xFF8B5CF6), Color(0xFF3B82F6)]).createShader(r(252, 640, 772, 780)));
 
     // Document sheet
-    final docPath = Path()
-      ..moveTo(p(352, 230))
-      ..lineTo(p(598, 230))
-      ..lineTo(p(672, 304))
-      ..lineTo(p(672, 620))
-      ..lineTo(p(352, 620))
-      ..close();
+    final docPath = poly([p(352, 230), p(598, 230), p(672, 304), p(672, 620), p(352, 620)]);
     canvas.drawPath(docPath, Paint()
       ..shader = const LinearGradient(
         colors: [Color(0xFFFFFFFF), Color(0xFFEDEAFF), Color(0xFFC9C2E8)],
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
       ).createShader(r(352, 230, 672, 620)));
-    final foldPath = Path()
-      ..moveTo(p(598, 230))
-      ..lineTo(p(672, 304))
-      ..lineTo(p(598, 304))
-      ..close();
+    final foldPath = poly([p(598, 230), p(672, 304), p(598, 304)]);
     canvas.drawPath(foldPath, Paint()..color = const Color(0xFFB7AEDA));
 
     // Document text lines
@@ -222,7 +215,7 @@ class ScanXWordmark extends StatelessWidget {
                 style: TextStyle(color: Colors.white, fontSize: fontSize, fontWeight: FontWeight.w900, letterSpacing: -0.5, height: 1.1),
               ),
             ),
-            const SizedBox(width: fontSize * 0.28),
+            SizedBox(width: fontSize * 0.28),
             Container(
               padding: EdgeInsets.symmetric(horizontal: fontSize * 0.24, vertical: fontSize * 0.08),
               decoration: BoxDecoration(
@@ -283,15 +276,12 @@ class _CrownPainter extends CustomPainter {
       end: Alignment.bottomCenter,
     ).createShader(Rect.fromLTRB(0, 0, size.width, size.height));
 
-    final path = Path()
-      ..moveTo(p(12, 70))
-      ..lineTo(p(12, 38))
-      ..lineTo(p(30, 52))
-      ..lineTo(p(50, 24))
-      ..lineTo(p(70, 52))
-      ..lineTo(p(88, 38))
-      ..lineTo(p(88, 70))
-      ..close();
+    final pts = [p(12, 70), p(12, 38), p(30, 52), p(50, 24), p(70, 52), p(88, 38), p(88, 70)];
+    final path = Path()..moveTo(pts.first.dx, pts.first.dy);
+    for (final pt in pts.skip(1)) {
+      path.lineTo(pt.dx, pt.dy);
+    }
+    path.close();
 
     canvas.saveLayer(Rect.fromLTRB(-size.width, -size.height, size.width * 2, size.height * 2), Paint());
     canvas.drawPath(path, Paint()..shader = shader..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));

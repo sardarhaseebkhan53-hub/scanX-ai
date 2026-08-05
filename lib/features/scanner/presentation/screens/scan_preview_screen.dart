@@ -103,6 +103,16 @@ class _ScanPreviewScreenState extends ConsumerState<ScanPreviewScreen> {
     }
   }
 
+  /// Maps an AI-suggested folder name onto one of the default folder ids
+  /// seeded by LocalStorageService, falling back to 'invoices'.
+  String _folderIdFor(String suggestedFolder) {
+    final s = suggestedFolder.toLowerCase();
+    if (s.contains('receipt') || s.contains('expense')) return 'receipts';
+    if (s.contains('passport') || s.contains('id')) return 'passports';
+    if (s.contains('contract') || s.contains('legal')) return 'contracts';
+    return 'invoices';
+  }
+
   Future<void> _saveAndRunOCR() async {
     setState(() => _isProcessing = true);
     try {
@@ -139,7 +149,7 @@ class _ScanPreviewScreenState extends ConsumerState<ScanPreviewScreen> {
       final suggestedTitle = await aiService.autoGenerateTitle(combinedText);
       final suggestedFolder = await aiService.suggestFolder(
         combinedText,
-        ['Invoices', 'Receipts', 'Legal', 'Personal'],
+        const ['Invoices', 'Receipts', 'Legal', 'Personal'],
       );
 
       // 4. Create DocumentItem and save to Hive local repository
@@ -147,7 +157,7 @@ class _ScanPreviewScreenState extends ConsumerState<ScanPreviewScreen> {
       final newDoc = DocumentItem(
         id: newDocId,
         title: suggestedTitle.isNotEmpty ? suggestedTitle : 'ScanX Document (${_paths.length}p)',
-        folderId: 'invoices',
+        folderId: _folderIdFor(suggestedFolder),
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
         filePaths: _paths,

@@ -15,7 +15,7 @@ void main() {
         updatedAt: now,
         filePaths: const ['/storage/emulated/0/scanx/page1.jpg', '/storage/emulated/0/scanx/page2.jpg'],
         pdfPath: '/storage/emulated/0/scanx/bench_doc_01.pdf',
-        ocrText: 'TOTAL AMOUNT DUE $1,500.00 • ENTERPRISE API LICENSE 2026 • SARDAR HASEEB TECHNOLOGIES',
+        ocrText: 'TOTAL AMOUNT DUE \$1,500.00 • ENTERPRISE API LICENSE 2026 • SARDAR HASEEB TECHNOLOGIES',
         tags: const ['#Invoice', '#2026', '#SardarHaseeb'],
         pageCount: 2,
         fileSizeBytes: 204800,
