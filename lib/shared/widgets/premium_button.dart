@@ -44,7 +44,6 @@ class _PremiumButtonState extends State<PremiumButton> {
         borderSideColor = Theme.of(context).colorScheme.primary;
         break;
       case PremiumButtonVariant.primary:
-      default:
         gradient = AppColors.primaryGradient;
         break;
     }

@@ -79,11 +79,6 @@ class _LuxEdgePainter extends CustomPainter {
       canvas.drawCircle(point, 3.5, Paint()..color = strokeColor);
     }
 
-    // Center AI badge indicator
-    final centerX = (corners[0].dx + corners[1].dx + corners[2].dx + corners[3].dx) / 4;
-    final centerY = (corners[0].dy + corners[1].dy + corners[2].dy + corners[3].dy) / 4;
-    final centerOffset = Offset(centerX, centerY);
-
     // L-shaped corner indicators extra luxury
     for (int i = 0; i < 4; i++) {
       final p = corners[i];

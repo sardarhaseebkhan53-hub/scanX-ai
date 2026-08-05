@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/logger/app_logger.dart';
 import '../../models/document_item.dart';
@@ -26,7 +25,6 @@ class CloudSyncService {
   bool get _isFirebaseReady => Firebase.apps.isNotEmpty;
   FirebaseAuth? get _auth => _isFirebaseReady ? FirebaseAuth.instance : null;
   FirebaseFirestore? get _firestore => _isFirebaseReady ? FirebaseFirestore.instance : null;
-  FirebaseStorage? get _storage => _isFirebaseReady ? FirebaseStorage.instance : null;
 
   final StreamController<SyncStatus> _syncStatusController = StreamController<SyncStatus>.broadcast();
   Stream<SyncStatus> get syncStatusStream => _syncStatusController.stream;

@@ -32,7 +32,6 @@ class _QrGeneratorScreenState extends ConsumerState<QrGeneratorScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = ref.read(qrProvider.notifier);
-    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: CustomAppBar(
