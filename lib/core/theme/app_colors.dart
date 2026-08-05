@@ -46,6 +46,13 @@ class AppColors {
   static Color get glassFillStrong => Colors.white.withOpacity(0.10);
 
   // ---------- Premium Gradients ----------
+  /// Official brand gradient (magenta -> violet -> blue -> cyan) from the logo.
+  static const LinearGradient brandGradient = LinearGradient(
+    colors: [Color(0xFFD43BF7), Color(0xFF8B5CF6), Color(0xFF3B82F6), Color(0xFF2FE9FF)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [Color(0xFF7C3AED), Color(0xFF6366F1), Color(0xFF3B82F6), Color(0xFF06B6D4)],
     begin: Alignment.topLeft,
