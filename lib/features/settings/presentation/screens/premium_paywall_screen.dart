@@ -1,9 +1,17 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
+
+import '../../../../config/injection/injection_container.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../shared/widgets/custom_app_bar.dart';
+import '../../../../services/monetization/billing_service.dart';
+import '../../../../shared/widgets/brand_logo.dart';
 
+/// "Go Premium. Do More." — ScanX Pro paywall with real Google Play Billing:
+/// monthly / annual / lifetime plans, restore purchases and live premium state.
 class PremiumPaywallScreen extends StatefulWidget {
   const PremiumPaywallScreen({super.key});
 
@@ -13,101 +21,222 @@ class PremiumPaywallScreen extends StatefulWidget {
 
 class _PremiumPaywallScreenState extends State<PremiumPaywallScreen> {
   int _selectedPlanIndex = 1;
-  int _countdownSeconds = 86400;
-  Timer? _timer;
+  bool _busy = false;
+  StreamSubscription<bool>? _premiumSub;
+
+  static const List<String> _planIds = [
+    AppConstants.monthlySubscriptionId,
+    AppConstants.annualSubscriptionId,
+    AppConstants.lifetimePurchaseId,
+  ];
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (mounted && _countdownSeconds > 0) setState(() => _countdownSeconds--);
+    _premiumSub = sl<BillingService>().premiumStatusStream.listen((premium) {
+      if (premium && mounted) {
+        _showWelcomeDialog();
+      }
     });
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _premiumSub?.cancel();
     super.dispose();
   }
 
-  String _fmt(int s) {
-    final h = s ~/ 3600;
-    final m = (s % 3600) ~/ 60;
-    final sec = s % 60;
-    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
+  void _showWelcomeDialog() {
+    setState(() => _busy = false);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusXl), side: BorderSide(color: AppColors.premiumGold.withOpacity(0.5))),
+        title: const Row(children: [PremiumCrownIcon(size: 30), SizedBox(width: 10), Text('Welcome to Pro!', style: TextStyle(color: Color(0xFFFFC857), fontWeight: FontWeight.w900))]),
+        content: Text('Unlimited scans, unlimited AI, 100GB cloud storage and an ad-free experience are now active.', style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 13, height: 1.5)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Continue', style: TextStyle(color: AppColors.premiumGold, fontWeight: FontWeight.w800))),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _purchase() async {
+    final billing = sl<BillingService>();
+    setState(() => _busy = true);
+
+    final id = _planIds[_selectedPlanIndex];
+    ProductDetails? product;
+    for (final p in billing.availableProducts) {
+      if (p.id == id) product = p;
+    }
+
+    if (product == null) {
+      setState(() => _busy = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Google Play store is unavailable on this device. Try again on a device with Play Services.'), backgroundColor: Color(0xFF3A1220)),
+        );
+      }
+      return;
+    }
+
+    final started = await billing.buyProduct(product);
+    if (mounted) {
+      setState(() => _busy = false);
+      if (!started) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Purchase could not be started.'), backgroundColor: Color(0xFF3A1220)));
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
-      appBar: CustomAppBar(
-        title: 'ScanX Pro',
-        subtitle: 'Unlock Intelligence',
-        leading: GestureDetector(onTap: () => Navigator.pop(context), child: Container(width: 40, height: 40, decoration: BoxDecoration(color: Colors.white.withOpacity(0.08), shape: BoxShape.circle, border: Border.all(color: Colors.white.withOpacity(0.12))), child: const Icon(Icons.close_rounded, color: Colors.white, size: 18))),
-        showBackButton: false,
-      ),
       body: Stack(
         children: [
           Positioned(top: -120, left: -80, child: Container(width: 380, height: 380, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [AppColors.neonPurple.withOpacity(0.22), Colors.transparent])))),
           Positioned(bottom: -60, right: -60, child: Container(width: 320, height: 320, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [AppColors.neonBlue.withOpacity(0.18), Colors.transparent])))),
-          SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          SafeArea(
             child: Column(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF5A78), Color(0xFFF97316)]), borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.redAccent.withOpacity(0.35), blurRadius: 16)]),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.timer_outlined, color: Colors.white, size: 16), const SizedBox(width: 6), Text('OFFER ENDS IN ${_fmt(_countdownSeconds)}', style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w800, letterSpacing: 0.6))]),
-                ),
-                const SizedBox(height: 22),
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Container(width: 110, height: 110, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [AppColors.goldGradient.colors.first.withOpacity(0.25), Colors.transparent]))),
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(gradient: AppColors.goldGradient, shape: BoxShape.circle, boxShadow: [BoxShadow(color: AppColors.goldGradient.colors.first.withOpacity(0.45), blurRadius: 24, offset: const Offset(0, 8))]),
-                      child: const Icon(Icons.workspace_premium_rounded, color: Colors.black, size: 44),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Text('Unlock Total\nDocument Intelligence', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, height: 1.1, letterSpacing: -0.8)),
-                const SizedBox(height: 12),
-                Text('Supercharge with unlimited AI OCR, cloud sync, AES-256 vault and zero ads.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 13.5, height: 1.5)),
-                const SizedBox(height: 24),
-                ...[
-                  'Unlimited AI Chat, Summary, Translation',
-                  'Zero Ads across entire app',
-                  'AES-256 Hidden Vault + Biometrics',
-                  'Multi-cloud sync • Drive, Dropbox',
-                  'All 12 PDF tools + Batch processing',
-                  'Priority VIP support',
-                ].map((f) => Padding(padding: const EdgeInsets.only(bottom: 10), child: Row(children: [Container(width: 22, height: 22, decoration: BoxDecoration(gradient: AppColors.emeraldGradient, shape: BoxShape.circle), child: const Icon(Icons.check_rounded, color: Colors.white, size: 14)), const SizedBox(width: 10), Expanded(child: Text(f, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13.5)))]))),
-                const SizedBox(height: 24),
-                Row(children: [
-                  Expanded(child: _PricingCard(index: 0, selected: _selectedPlanIndex, onTap: (i) => setState(() => _selectedPlanIndex = i), title: 'Monthly', price: '\$4.99/mo', sub: 'Billed monthly')),
-                  const SizedBox(width: 10),
-                  Expanded(child: _PricingCard(index: 1, selected: _selectedPlanIndex, onTap: (i) => setState(() => _selectedPlanIndex = i), title: 'Yearly', price: '\$29.99/yr', sub: 'Save 50%', badge: 'POPULAR')),
-                  const SizedBox(width: 10),
-                  Expanded(child: _PricingCard(index: 2, selected: _selectedPlanIndex, onTap: (i) => setState(() => _selectedPlanIndex = i), title: 'Lifetime', price: '\$79.99', sub: 'One-time')),
-                ]),
-                const SizedBox(height: 28),
-                GestureDetector(
-                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Starting Google Play Billing...'), backgroundColor: Color(0xFF151D3F))),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    decoration: BoxDecoration(gradient: AppColors.scannerGradient, borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: AppColors.primaryDark.withOpacity(0.45), blurRadius: 24, offset: const Offset(0, 8))], border: Border.all(color: Colors.white.withOpacity(0.14))),
-                    child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.bolt_rounded, color: Colors.white, size: 20), SizedBox(width: 8), Text('Start 7-Day Free Trial', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800))]),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(width: 40, height: 40, decoration: BoxDecoration(color: Colors.white.withOpacity(0.08), shape: BoxShape.circle, border: Border.all(color: Colors.white.withOpacity(0.12))), child: const Icon(Icons.close_rounded, color: Colors.white, size: 18)),
+                      ),
+                      const Spacer(),
+                      const ScanXWordmark(fontSize: 16),
+                      const SizedBox(width: 40),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [TextButton(onPressed: () {}, child: Text('Restore', style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 12))), Text('•', style: TextStyle(color: AppColors.textSecondaryDark)), TextButton(onPressed: () {}, child: Text('Cancel Anytime', style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 12)))]),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 8),
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(width: 130, height: 130, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [AppColors.premiumGold.withOpacity(0.28), Colors.transparent]))),
+                            Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(gradient: AppColors.goldGradient, shape: BoxShape.circle, boxShadow: [BoxShadow(color: AppColors.premiumGold.withOpacity(0.45), blurRadius: 26, offset: const Offset(0, 8))]),
+                              child: const PremiumCrownIcon(size: 46),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        const Text.rich(
+                          TextSpan(children: [
+                            TextSpan(text: 'Go Premium. ', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.8)),
+                            TextSpan(text: 'Do More.', style: TextStyle(color: AppColors.neonPurple, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.8)),
+                          ]),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 10),
+                        Text('Unlock the full power of ScanX AI and experience next-level productivity.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 13, height: 1.5)),
+                        const SizedBox(height: 22),
+                        GridView(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 3.4),
+                          children: const [
+                            _Benefit(label: 'Unlimited Scans'),
+                            _Benefit(label: 'AI Summaries (Unlimited)'),
+                            _Benefit(label: 'AI Chat (Unlimited)'),
+                            _Benefit(label: 'Advanced PDF Tools'),
+                            _Benefit(label: 'Cloud Storage (100GB)'),
+                            _Benefit(label: 'Batch Processing'),
+                            _Benefit(label: 'Ad-Free Experience'),
+                            _Benefit(label: 'Priority Support'),
+                          ],
+                        ),
+                        const SizedBox(height: 22),
+                        Row(children: [
+                          _PricingCard(index: 0, selected: _selectedPlanIndex, onTap: (i) => setState(() => _selectedPlanIndex = i), title: 'Monthly', price: '\$4.99/mo', sub: 'Billed monthly'),
+                          const SizedBox(width: 10),
+                          _PricingCard(index: 1, selected: _selectedPlanIndex, onTap: (i) => setState(() => _selectedPlanIndex = i), title: 'Yearly', price: '\$29.99/yr', sub: 'Save 50%', badge: 'POPULAR'),
+                          const SizedBox(width: 10),
+                          _PricingCard(index: 2, selected: _selectedPlanIndex, onTap: (i) => setState(() => _selectedPlanIndex = i), title: 'Lifetime', price: '\$79.99', sub: 'One-time'),
+                        ]),
+                        const SizedBox(height: 24),
+                        GestureDetector(
+                          onTap: _busy ? null : _purchase,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            decoration: BoxDecoration(
+                              gradient: AppColors.brandGradient,
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: [BoxShadow(color: AppColors.neonPurple.withOpacity(0.45), blurRadius: 24, offset: const Offset(0, 8))],
+                              border: Border.all(color: Colors.white.withOpacity(0.16)),
+                            ),
+                            child: _busy
+                                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+                                : const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                                    PremiumCrownIcon(size: 22),
+                                    SizedBox(width: 10),
+                                    Text('Upgrade to Pro', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+                                  ]),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          TextButton(
+                            onPressed: () async {
+                              await sl<BillingService>().restorePurchases();
+                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Restore completed'), backgroundColor: Color(0xFF151D3F)));
+                            },
+                            child: Text('Restore Purchases', style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 12)),
+                          ),
+                          Text('•', style: TextStyle(color: AppColors.textSecondaryDark)),
+                          TextButton(onPressed: () => Navigator.pop(context), child: Text('Maybe Later', style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 12))),
+                        ]),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Benefit extends StatelessWidget {
+  final String label;
+  const _Benefit({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(gradient: AppColors.emeraldGradient, shape: BoxShape.circle),
+            child: const Icon(Icons.check_rounded, color: Colors.white, size: 13),
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: Text(label, maxLines: 2, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600, height: 1.2))),
         ],
       ),
     );

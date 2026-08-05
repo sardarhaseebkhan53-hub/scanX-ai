@@ -1,11 +1,83 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
-    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#8B5CF6;stop-opacity:1" />
+    <linearGradient id="border" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D43BF7"/>
+      <stop offset="30%" stop-color="#8B5CF6"/>
+      <stop offset="62%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#2FE9FF"/>
     </linearGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0E0818"/>
+      <stop offset="55%" stop-color="#08060F"/>
+      <stop offset="100%" stop-color="#04050B"/>
+    </linearGradient>
+    <linearGradient id="doc" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="60%" stop-color="#EDEAFF"/>
+      <stop offset="100%" stop-color="#C9C2E8"/>
+    </linearGradient>
+    <linearGradient id="scan" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#E14BF7"/>
+      <stop offset="50%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#38D5F7"/>
+    </linearGradient>
+    <linearGradient id="ai" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#A855F7"/>
+      <stop offset="50%" stop-color="#7C6BFF"/>
+      <stop offset="100%" stop-color="#38D5F7"/>
+    </linearGradient>
+    <linearGradient id="tray" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#3B82F6"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="14" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softglow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="22" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
   </defs>
-  <rect width="100" height="100" rx="22" fill="url(#grad1)" />
-  <path d="M28,28 L72,28 L72,72 L28,72 Z" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
-  <circle cx="50" cy="50" r="12" fill="#FFFFFF" />
+
+  <rect width="1024" height="1024" fill="#000000"/>
+  <!-- Neon tile -->
+  <rect x="96" y="96" width="832" height="832" rx="208" fill="url(#tile)"/>
+  <rect x="104" y="104" width="816" height="816" rx="200" fill="none" stroke="url(#border)" stroke-width="16" filter="url(#softglow)"/>
+
+  <!-- Corner brackets -->
+  <g stroke-linecap="round" stroke-width="30" fill="none" filter="url(#glow)">
+    <path d="M196 322 V212 H306" stroke="#D24BF7"/>
+    <path d="M718 212 H828 V322" stroke="#4FA0F7"/>
+    <path d="M196 702 V812 H306" stroke="#8B5CF6"/>
+    <path d="M718 812 H828 V702" stroke="#38D5F7"/>
+  </g>
+
+  <!-- Scanner tray -->
+  <path d="M306 640 H718 L772 780 H252 Z" fill="#0B0716" stroke="url(#tray)" stroke-width="20" stroke-linejoin="round" filter="url(#glow)"/>
+
+  <!-- Document -->
+  <path d="M352 230 H598 L672 304 V620 H352 Z" fill="url(#doc)"/>
+  <path d="M598 230 L672 304 H598 Z" fill="#B7AEDA"/>
+  <g stroke-linecap="round" fill="none">
+    <path d="M392 330 H520" stroke="#7C5CFF" stroke-width="18"/>
+    <path d="M392 378 H612" stroke="#6F6DFB" stroke-width="18"/>
+    <path d="M392 426 H632" stroke="#627DF9" stroke-width="18"/>
+    <path d="M392 474 H560" stroke="#5B8DEF" stroke-width="18"/>
+    <path d="M392 566 H600" stroke="#A79BD8" stroke-width="16" opacity="0.8"/>
+    <path d="M392 596 H540" stroke="#A79BD8" stroke-width="16" opacity="0.8"/>
+  </g>
+
+  <!-- Scanline -->
+  <g filter="url(#softglow)">
+    <path d="M168 512 H856" stroke="url(#scan)" stroke-width="10" stroke-linecap="round"/>
+  </g>
+
+  <!-- AI glyphs -->
+  <g stroke="url(#ai)" stroke-linecap="round" fill="none" stroke-width="30" filter="url(#glow)">
+    <path d="M452 786 L408 906"/>
+    <path d="M452 786 L496 906"/>
+    <path d="M425 864 H479" stroke-width="26"/>
+    <path d="M562 786 V906"/>
+  </g>
 </svg>

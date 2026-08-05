@@ -3,9 +3,23 @@
     "short_name": "ScanX AI",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "ScanX AI Enterprise Studio",
+    "background_color": "#000000",
+    "theme_color": "#7C5CFF",
+    "description": "ScanX AI — Smart Scanner. Smarter AI. Document scanning, OCR, PDF studio & AI toolkit.",
     "orientation": "portrait-primary",
-    "prefer_related_applications": false
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
 }

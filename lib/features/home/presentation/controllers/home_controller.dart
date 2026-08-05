@@ -347,3 +347,9 @@ class HomeController extends StateNotifier<HomeState> {
 final homeProvider = StateNotifierProvider<HomeController, HomeState>((ref) {
   return HomeController();
 });
+
+/// Independent browser instance powering the "All Documents" tab so its
+/// filters/folder navigation never disturb the Home dashboard view.
+final documentsBrowserProvider = StateNotifierProvider<HomeController, HomeState>((ref) {
+  return HomeController();
+});

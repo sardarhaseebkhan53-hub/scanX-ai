@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/ai/presentation/screens/ai_assistant_screen.dart';
 import '../../features/ai/presentation/screens/receipt_analysis_screen.dart';
 import '../../features/cloud/presentation/screens/cloud_sync_screen.dart';
-import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/home/presentation/screens/main_shell.dart';
 import '../../features/ocr/presentation/screens/ocr_viewer_screen.dart';
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/pdf/presentation/screens/pdf_editor_screen.dart';
@@ -29,7 +29,7 @@ class AppRouter {
     routes: [
       GoRoute(
         path: RouteNames.home,
-        builder: (context, state) => const HomeScreen(),
+        builder: (context, state) => const MainShell(),
       ),
       GoRoute(
         path: RouteNames.scanner,

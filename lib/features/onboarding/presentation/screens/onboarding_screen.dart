@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../../config/routes/route_names.dart';
-import '../../../../core/constants/app_constants.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/brand_logo.dart';
 import '../../../settings/presentation/controllers/settings_controller.dart';
 
+/// Premium 3-slide brand tour: Lightning-Fast AI Scanning, AI Intelligence,
+/// Enterprise Security & Offline — mirrors the product value proposition.
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -14,34 +18,7 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final PageController _pageController = PageController();
-  int _currentPageIndex = 0;
-
-  final List<Map<String, dynamic>> _slides = [
-    {
-      'title': 'Professional AI Scanner',
-      'subtitle': 'CameraX-Quality • 8 Scan Modes • Auto-Edge Detection',
-      'description':
-          'Capture documents, receipts, ID cards, and books with intelligent edge tracking, blur detection, and instant shadow & reflection removal.',
-      'icon': Icons.camera_enhance_rounded,
-      'color': const Color(0xFF3B82F6), // Royal Blue
-    },
-    {
-      'title': 'QR & Wi-Fi Toolkit + OCR',
-      'subtitle': 'Live Barcode Reader • WPA/WPA3 Creator • Google ML Kit',
-      'description':
-          'Scan and generate Wi-Fi, URL, and vCard QR codes safely. Extract selectable text from any document with 98% accuracy across 8 languages.',
-      'icon': Icons.qr_code_scanner_rounded,
-      'color': const Color(0xFF10B981), // Emerald Green
-    },
-    {
-      'title': 'AES-256 Vault & Cloud Sync',
-      'subtitle': 'Keystore Shield • Hidden Vault • Firebase Bi-Directional Sync',
-      'description':
-          'Protect private documents with fingerprint, Face ID, PIN, or 3x3 pattern lock. Sync seamlessly across Firebase, Google Drive, and Dropbox.',
-      'icon': Icons.security_rounded,
-      'color': const Color(0xFF8B5CF6), // Purple AI
-    },
-  ];
+  int _page = 0;
 
   @override
   void dispose() {
@@ -49,177 +26,184 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     super.dispose();
   }
 
-  void _finishOnboarding() {
+  void _finish() {
     ref.read(settingsProvider.notifier).completeOnboarding();
     context.go(RouteNames.home);
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // 1. Top Header with Skip
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
+      backgroundColor: AppColors.backgroundDark,
+      body: Stack(
+        children: [
+          Positioned(top: -140, left: -100, child: Container(width: 420, height: 420, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [AppColors.neonPurple.withOpacity(0.20), Colors.transparent])))),
+          Positioned(bottom: -120, right: -100, child: Container(width: 420, height: 420, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [AppColors.neonCyan.withOpacity(0.14), Colors.transparent])))),
+          SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 18, 16, 8),
+                  child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: colorScheme.primary.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(Icons.workspace_premium_rounded,
-                            color: colorScheme.primary, size: 20),
-                      ),
+                      const ScanXLogoIcon(size: 30),
                       const SizedBox(width: 8),
-                      const Text(
-                        AppConstants.appName,
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      const ScanXWordmark(fontSize: 17),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: _finish,
+                        child: Text('Skip', style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 13, fontWeight: FontWeight.w600)),
                       ),
                     ],
                   ),
-                  TextButton(
-                    onPressed: _finishOnboarding,
-                    child: const Text('Skip', style: TextStyle(fontWeight: FontWeight.w600)),
+                ),
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    onPageChanged: (p) => setState(() => _page = p),
+                    children: const [
+                      _Slide(
+                        icon: Icons.document_scanner_rounded,
+                        gradient: AppColors.scannerGradient,
+                        title: 'Lightning Fast\nAI Scanning',
+                        subtitle: 'Auto edge detection, perspective correction and 99% OCR accuracy — scan documents, receipts, books, IDs & whiteboards in seconds.',
+                        chips: ['Auto Edge Detection', '99% OCR Accuracy', '14 Pro Filters'],
+                      ),
+                      _Slide(
+                        icon: Icons.auto_awesome_rounded,
+                        gradient: AppColors.aiGradient,
+                        title: 'AI That\nUnderstands',
+                        subtitle: 'Instant summaries, chat with your documents, rewrite text, parse receipts and translate into 8+ languages — powered by Gemini & GPT-4o.',
+                        chips: ['AI Summaries', 'Chat with Docs', 'Receipt AI'],
+                      ),
+                      _Slide(
+                        icon: Icons.shield_rounded,
+                        gradient: AppColors.cyanGradient,
+                        title: 'Enterprise Security.\nAnywhere.',
+                        subtitle: 'AES-256 encrypted vault with biometrics, PIN & pattern lock. 100% offline support with optional cloud backup & sync across devices.',
+                        chips: ['AES-256 Vault', 'Offline Mode', 'Cloud Sync'],
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-
-            // 2. PageView Carousel
-            Expanded(
-              child: PageView.builder(
-                controller: _pageController,
-                onPageChanged: (idx) => setState(() => _currentPageIndex = idx),
-                itemCount: _slides.length,
-                itemBuilder: (context, index) {
-                  final slide = _slides[index];
-                  final Color slideColor = slide['color'] as Color;
-
-                  return Padding(
-                    padding: const EdgeInsets.all(28),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 170,
-                          height: 170,
-                          decoration: BoxDecoration(
-                            color: slideColor.withOpacity(0.14),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: slideColor.withOpacity(0.35), width: 2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: slideColor.withOpacity(0.25),
-                                blurRadius: 24,
-                                spreadRadius: 4,
-                              ),
-                            ],
-                          ),
-                          alignment: Alignment.center,
-                          child: Icon(
-                            slide['icon'] as IconData,
-                            size: 84,
-                            color: slideColor,
-                          ),
-                        ),
-                        const SizedBox(height: 36),
-                        Text(
-                          slide['title'] as String,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          slide['subtitle'] as String,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: slideColor,
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        Text(
-                          slide['description'] as String,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 15,
-                            height: 1.5,
-                            color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.75),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            // 3. Page Indicators & Next/Start Button
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 28),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: List.generate(_slides.length, (idx) {
-                      final isSelected = _currentPageIndex == idx;
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.only(right: 6),
-                        width: isSelected ? 24 : 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: isSelected ? colorScheme.primary : Colors.grey.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      );
-                    }),
-                  ),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    onPressed: () {
-                      if (_currentPageIndex < _slides.length - 1) {
-                        _pageController.nextPage(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(3, (i) {
+                    final sel = i == _page;
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: sel ? 26 : 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        gradient: sel ? AppColors.brandGradient : null,
+                        color: sel ? null : Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 22),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_page < 2) {
+                        _pageController.nextPage(duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic);
                       } else {
-                        _finishOnboarding();
+                        _finish();
                       }
                     },
-                    icon: Icon(
-                      _currentPageIndex < _slides.length - 1
-                          ? Icons.arrow_forward_rounded
-                          : Icons.check_rounded,
-                      size: 18,
-                    ),
-                    label: Text(
-                      _currentPageIndex < _slides.length - 1 ? 'Next' : 'Get Started',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 17),
+                      decoration: BoxDecoration(
+                        gradient: AppColors.brandGradient,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [BoxShadow(color: AppColors.neonPurple.withOpacity(0.45), blurRadius: 24, offset: const Offset(0, 8))],
+                        border: Border.all(color: Colors.white.withOpacity(0.16)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(_page < 2 ? 'Continue' : 'Get Started', style: const TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.w900)),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 17),
+                        ],
+                      ),
                     ),
                   ),
-                ],
-              ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: ShaderMask(
+                    shaderCallback: (rect) => LinearGradient(colors: const [Color(0xFFD43BF7), Color(0xFF8B5CF6), Color(0xFF38D5F7)]).createShader(rect),
+                    child: const Text('SMART SCANNER. SMARTER AI.', style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w700, letterSpacing: 2.4)),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Slide extends StatelessWidget {
+  final IconData icon;
+  final Gradient gradient;
+  final String title;
+  final String subtitle;
+  final List<String> chips;
+  const _Slide({required this.icon, required this.gradient, required this.title, required this.subtitle, required this.chips});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(width: 210, height: 210, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [gradient.colors.first.withOpacity(0.28), Colors.transparent]))),
+              Container(
+                width: 150,
+                height: 150,
+                decoration: BoxDecoration(
+                  gradient: gradient,
+                  shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: gradient.colors.first.withOpacity(0.5), blurRadius: 34, offset: const Offset(0, 12))],
+                  border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.4),
+                ),
+                child: Icon(icon, color: Colors.white, size: 64),
+              ),
+            ],
+          ),
+          const SizedBox(height: 40),
+          Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900, height: 1.12, letterSpacing: -0.8)),
+          const SizedBox(height: 16),
+          Text(subtitle, textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 13.5, height: 1.6)),
+          const SizedBox(height: 22),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: chips
+                .map((c) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: gradient.colors.first.withOpacity(0.4)),
+                      ),
+                      child: Text(c, style: TextStyle(color: gradient.colors.first, fontSize: 10.5, fontWeight: FontWeight.w700)),
+                    ))
+                .toList(),
+          ),
+        ],
       ),
     );
   }

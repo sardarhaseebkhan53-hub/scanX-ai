@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../config/injection/injection_container.dart';
 import '../../../../config/routes/route_names.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../services/monetization/billing_service.dart';
+import '../../../../shared/widgets/brand_logo.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../scanner/presentation/widgets/watermark_studio_modal.dart';
 import '../controllers/settings_controller.dart';
@@ -38,23 +41,26 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(shape: BoxShape.circle, gradient: AppColors.scannerGradient),
-                      child: const CircleAvatar(radius: 24, backgroundColor: Color(0xFF151D3F), child: Text('H', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800))),
-                    ),
+                    const ScanXLogoIcon(size: 48),
                     const SizedBox(width: 14),
-                    const Expanded(
+                    Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('Haseeb Ahmed', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
-                        SizedBox(height: 2),
-                        Text('Pro Member • Cloud Synced', style: TextStyle(color: Color(0xFF8B94B8), fontSize: 12)),
+                        const Text('ScanX AI', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                        const SizedBox(height: 2),
+                        Text('v${AppConstants.appVersion} • Local-first & private', style: const TextStyle(color: Color(0xFF8B94B8), fontSize: 12)),
                       ]),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(gradient: AppColors.goldGradient, borderRadius: BorderRadius.circular(20)),
-                      child: const Text('PRO', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 0.8)),
+                    StreamBuilder<bool>(
+                      stream: sl<BillingService>().premiumStatusStream,
+                      initialData: sl<BillingService>().isPremium,
+                      builder: (context, snap) {
+                        final pro = snap.data ?? false;
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(gradient: pro ? AppColors.goldGradient : AppColors.brandGradient, borderRadius: BorderRadius.circular(20)),
+                          child: Text(pro ? 'PRO' : 'FREE', style: TextStyle(color: pro ? Colors.black : Colors.white, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 0.8)),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -95,7 +101,7 @@ class SettingsScreen extends ConsumerWidget {
                 child: Column(
                   children: [
                     Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Container(width: 40, height: 40, decoration: BoxDecoration(gradient: AppColors.scannerGradient, shape: BoxShape.circle), child: const Center(child: Text('SH', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)))),
+                      const ScanXLogoIcon(size: 40),
                       const SizedBox(width: 12),
                       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Developed by', style: TextStyle(fontSize: 10, color: AppColors.textSecondaryDark)), Text('Sardar Haseeb', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white))]),
                     ]),

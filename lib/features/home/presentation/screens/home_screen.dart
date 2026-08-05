@@ -1,31 +1,42 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 
+import '../../../../config/injection/injection_container.dart';
 import '../../../../config/routes/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../shared/widgets/action_button.dart';
-import '../../../../shared/widgets/app_search_bar.dart';
+import '../../../../core/utils/smart_categories.dart';
+import '../../../../domain/repositories/document_repository.dart';
+import '../../../../models/document_item.dart';
+import '../../../../services/pdf/pdf_service.dart';
+import '../../../../shared/widgets/brand_logo.dart';
+import '../../../../shared/widgets/document_picker_sheet.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../../shared/widgets/premium_banner.dart';
-import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/skeleton_loader.dart';
 import '../controllers/home_controller.dart';
-import '../widgets/document_card.dart';
-import '../widgets/folder_card.dart';
 
-/// Ultra-premium dark luxury Home dashboard
+/// Home dashboard — matches the ScanX AI product reference exactly:
+/// brand header w/ premium crown, smart search, AI Document Summary hero,
+/// Quick Actions, Recent Documents, Smart Categories.
 class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
+  final VoidCallback? onSeeAllDocs;
+  final VoidCallback? onSeeAllTools;
+  final void Function(String category)? onOpenCategory;
+
+  const HomeScreen({super.key, this.onSeeAllDocs, this.onSeeAllTools, this.onOpenCategory});
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStateMixin {
-  int _currentNavIndex = 0;
   late AnimationController _orbController;
+  bool _importing = false;
 
   @override
   void initState() {
@@ -39,695 +50,344 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     super.dispose();
   }
 
-  String get _greeting {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  }
-
   @override
   Widget build(BuildContext context) {
     final homeState = ref.watch(homeProvider);
     final homeController = ref.read(homeProvider.notifier);
-    final isBrowsing = homeState.isTrashView || homeState.isArchiveView || homeState.isSelectionMode;
 
     return Scaffold(
-      extendBody: true,
       backgroundColor: AppColors.backgroundDark,
       body: Stack(
         children: [
-          // Luxury ambient background orbs
-          Positioned.fill(
-            child: Stack(
-              children: [
-                Positioned(
-                  top: -120,
-                  left: -80,
-                  child: AnimatedBuilder(
-                    animation: _orbController,
-                    builder: (context, child) {
-                      return Transform.translate(
-                        offset: Offset(10 * _orbController.value, 0),
-                        child: child,
-                      );
-                    },
-                    child: Container(
-                      width: 340,
-                      height: 340,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [AppColors.primaryDark.withOpacity(0.22), AppColors.primaryDark.withOpacity(0)],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 80,
-                  right: -80,
-                  child: Container(
-                    width: 380,
-                    height: 380,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [AppColors.secondaryDark.withOpacity(0.18), Colors.transparent],
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 320,
-                  right: 60,
-                  child: Container(
-                    width: 220,
-                    height: 220,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [AppColors.neonCyan.withOpacity(0.10), Colors.transparent],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          Positioned.fill(child: _AmbientOrbs(animation: _orbController)),
           RefreshIndicator(
-            onRefresh: () => homeController.loadData(),
             color: AppColors.primaryDark,
             backgroundColor: AppColors.surfaceDark,
+            onRefresh: () => homeController.loadData(),
             child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
               slivers: [
                 SliverToBoxAdapter(
-                  child: isBrowsing
-                      ? _BrowsingHeader(homeState: homeState, homeController: homeController)
-                      : _GreetingHeader(greeting: _greeting, docCount: homeState.documents.length),
-                ),
-                if (!isBrowsing)
-                  SliverToBoxAdapter(
+                  child: SafeArea(
+                    bottom: false,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                      child: Column(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+                      child: Row(
                         children: [
-                          AppSearchBar(
-                            onChanged: homeController.setSearchQuery,
-                            onFilterTap: () => _showSortModal(context, homeController, homeState.sortBy),
+                          const ScanXLogoIcon(size: 34),
+                          const SizedBox(width: 10),
+                          const ScanXWordmark(fontSize: 21),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: () => context.push(RouteNames.premiumPaywall),
+                            child: Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFC857).withOpacity(0.12),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: const Color(0xFFFFC857).withOpacity(0.35)),
+                              ),
+                              child: const Center(child: PremiumCrownIcon(size: 22)),
+                            ),
                           ),
-                          const SizedBox(height: 14),
-                          _StatsRow(docs: homeState.documents.length),
                         ],
                       ),
                     ),
                   ),
-
-                if (!isBrowsing) ...[
-                  const SliverToBoxAdapter(child: SectionHeader(title: 'Quick Actions', icon: Icons.bolt_rounded)),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-                    sliver: SliverGrid(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 1.48,
-                      ),
-                      delegate: SliverChildListDelegate([
-                        ActionButton(
-                          label: 'Smart Scanner',
-                          subtitle: 'AI edge detection',
-                          icon: Icons.document_scanner_rounded,
-                          gradient: AppColors.scannerGradient,
-                          onTap: () => context.push(RouteNames.scanner),
-                        ),
-                        ActionButton(
-                          label: 'Import & PDF',
-                          subtitle: 'Merge, split, compress',
-                          icon: Icons.picture_as_pdf_rounded,
-                          gradient: AppColors.cyanGradient,
-                          onTap: () => context.push(RouteNames.pdfTools),
-                        ),
-                        ActionButton(
-                          label: 'QR Studio',
-                          subtitle: 'Scan & generate',
-                          icon: Icons.qr_code_2_rounded,
-                          gradient: AppColors.emeraldGradient,
-                          onTap: () => context.push(RouteNames.qrDashboard),
-                        ),
-                        ActionButton(
-                          label: 'AI Intelligence',
-                          subtitle: 'Chat, summary, OCR',
-                          icon: Icons.auto_awesome_rounded,
-                          gradient: AppColors.aiGradient,
-                          onTap: () => context.push(RouteNames.aiAssistant),
-                        ),
-                      ]),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                      child: _AIToolsStrip(onTap: (title) {
-                        if (title == 'OCR') context.push(RouteNames.pdfTools);
-                        else context.push(RouteNames.aiAssistant);
-                      }),
-                    ),
-                  ),
-                ],
-
-                if (!isBrowsing) ...[
-                  SliverToBoxAdapter(
-                    child: SectionHeader(
-                      title: homeState.selectedFolderId != null ? 'Sub-Folders' : 'Smart Folders',
-                      actionLabel: 'New',
-                      onActionTap: () => _showCreateFolderDialog(context, homeController, homeState.selectedFolderId),
-                      icon: Icons.folder_special_rounded,
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: 112,
-                      child: homeState.folders.isEmpty
-                          ? Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.04),
-                                  borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                                  border: Border.all(color: Colors.white.withOpacity(0.06)),
-                                ),
-                                child: Center(
-                                  child: Text('No folders yet — tap New to organize', style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 12)),
-                                ),
-                              ),
-                            )
-                          : ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              itemCount: homeState.folders.length,
-                              separatorBuilder: (_, __) => const SizedBox(width: 12),
-                              itemBuilder: (context, index) {
-                                final folder = homeState.folders[index];
-                                final count = homeState.documents.where((d) => d.folderId == folder.id).length;
-                                return FolderCard(folder: folder, itemCount: count, onTap: () => homeController.selectFolder(folder.id));
-                              },
-                            ),
-                    ),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 8)),
-                ],
-
+                ),
                 SliverToBoxAdapter(
-                  child: SectionHeader(
-                    title: homeState.isTrashView
-                        ? 'Trash'
-                        : homeState.isArchiveView
-                            ? 'Archive Vault'
-                            : 'Recent Documents',
-                    actionLabel: homeState.documents.isNotEmpty ? '${homeState.documents.length} items' : null,
-                    icon: Icons.history_rounded,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
+                    child: _SmartSearchBar(
+                      onChanged: homeController.setSearchQuery,
+                      onMicTap: () => context.push(RouteNames.aiAssistant),
+                    ),
                   ),
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 6)),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
+                    child: _AiSummaryHero(onSummarize: _summarizeNow),
+                  ),
+                ),
 
+                // ---------- Quick Actions ----------
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 12, 4),
+                    child: Row(
+                      children: [
+                        const Text('Quick Actions', style: TextStyle(color: Colors.white, fontSize: 16.5, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
+                        const Spacer(),
+                        _SeeAll(onTap: widget.onSeeAllTools),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 96,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                      children: [
+                        _QuickActionTile(label: 'Scan\nDocument', icon: Icons.document_scanner_rounded, color: const Color(0xFF22D3EE), onTap: () => context.push(RouteNames.scanner)),
+                        _QuickActionTile(label: 'Import\nGallery', icon: Icons.photo_library_rounded, color: const Color(0xFFFFC857), onTap: _importGallery),
+                        _QuickActionTile(label: 'AI Chat\nwith Docs', icon: Icons.chat_bubble_rounded, color: const Color(0xFFA855F7), onTap: () => context.push(RouteNames.aiAssistant)),
+                        _QuickActionTile(label: 'OCR\nExtract Text', icon: Icons.text_snippet_rounded, color: const Color(0xFFFF5A78), onTap: _ocrFlow),
+                        _QuickActionTile(label: 'PDF\nTools', icon: Icons.picture_as_pdf_rounded, color: const Color(0xFF8B5CF6), onTap: () => context.push(RouteNames.pdfTools)),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // ---------- Recent Documents ----------
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 12, 4),
+                    child: Row(
+                      children: [
+                        const Text('Recent Documents', style: TextStyle(color: Colors.white, fontSize: 16.5, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
+                        const Spacer(),
+                        _SeeAll(onTap: widget.onSeeAllDocs),
+                      ],
+                    ),
+                  ),
+                ),
                 if (homeState.isLoading)
                   const SliverToBoxAdapter(child: SkeletonLoader())
                 else if (homeState.documents.isEmpty)
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: EmptyStateWidget(
-                      title: homeState.isTrashView
-                          ? 'Trash is Empty'
-                          : homeState.isArchiveView
-                              ? 'Archive Vault Empty'
-                              : 'No Documents Yet',
-                      subtitle: homeState.isTrashView
-                          ? 'Deleted files will appear here until permanently removed.'
-                          : homeState.isArchiveView
-                              ? 'Archived documents stay safe here.'
-                              : 'Capture your first document with AI auto-enhancement, edge detection and ML Kit OCR.',
-                      buttonText: (homeState.isTrashView || homeState.isArchiveView) ? null : 'Start Scanning',
-                      onButtonPressed: (homeState.isTrashView || homeState.isArchiveView) ? null : () => context.push(RouteNames.scanner),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: EmptyStateWidget(
+                        title: 'No Documents Yet',
+                        subtitle: 'Capture your first document with AI auto-enhancement, edge detection and ML Kit OCR.',
+                        buttonText: 'Start Scanning',
+                        onButtonPressed: () => context.push(RouteNames.scanner),
+                      ),
                     ),
                   )
                 else
                   SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.fromLTRB(20, 6, 20, 4),
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
                           final doc = homeState.documents[index];
-                          final isSelected = homeState.selectedDocIds.contains(doc.id);
-                          String? snippet;
-                          if (homeState.searchQuery.trim().isNotEmpty && doc.ocrText != null) {
-                            final query = homeState.searchQuery.trim().toLowerCase();
-                            final textLower = doc.ocrText!.toLowerCase();
-                            final idx = textLower.indexOf(query);
-                            if (idx != -1) {
-                              final start = (idx - 25).clamp(0, doc.ocrText!.length);
-                              final end = (idx + query.length + 55).clamp(0, doc.ocrText!.length);
-                              snippet = '"...${doc.ocrText!.substring(start, end).replaceAll('\n', ' ')}..."';
-                            }
-                          }
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 10),
-                            child: RepaintBoundary(
-                              child: DocumentCard(
-                                document: doc,
-                                matchingSnippet: snippet,
-                                isSelectionMode: homeState.isSelectionMode,
-                                isSelected: isSelected,
-                                onSelectionToggle: () => homeController.toggleDocSelection(doc.id),
-                                onLongPress: () {
-                                  homeController.toggleSelectionMode(true);
-                                  homeController.toggleDocSelection(doc.id);
-                                },
-                                onTap: () {
-                                  if (homeState.isSelectionMode) {
-                                    homeController.toggleDocSelection(doc.id);
-                                  } else {
-                                    context.push(RouteNames.ocrViewer, extra: doc.id);
-                                  }
-                                },
-                                onFavoriteToggle: () => homeController.toggleFavorite(doc),
-                                onToggleLock: () {
-                                  homeController.toggleLock(doc);
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(doc.isLocked ? 'Removed from Vault' : 'Secured in Vault'), backgroundColor: const Color(0xFF1A2348)));
-                                },
-                                onToggleArchive: () {
-                                  homeController.toggleArchive(doc);
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(doc.isArchived ? 'Unarchived' : 'Archived'), backgroundColor: const Color(0xFF1A2348)));
-                                },
-                                onDelete: () => homeController.deleteDocument(doc.id),
-                              ),
-                            ),
+                            child: _RecentDocRow(doc: doc, onTap: () => context.push(RouteNames.ocrViewer, extra: doc.id)),
                           );
                         },
-                        childCount: homeState.documents.length,
+                        childCount: math.min(homeState.documents.length, 6),
                       ),
                     ),
                   ),
 
-                SliverToBoxAdapter(child: PremiumBanner(onTap: () => context.push(RouteNames.premiumPaywall))),
-                const SliverToBoxAdapter(child: SizedBox(height: 140)),
-              ],
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: _ScanFab(onTap: () => context.push(RouteNames.scanner)),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: _BottomNav(
-        currentIndex: _currentNavIndex,
-        onHomeTap: () => setState(() => _currentNavIndex = 0),
-        onPdfTap: () => context.push(RouteNames.pdfTools),
-        onAiTap: () => context.push(RouteNames.aiAssistant),
-        onSettingsTap: () => context.push(RouteNames.settings),
-      ),
-    );
-  }
-
-  void _showSortModal(BuildContext context, HomeController controller, String currentSort) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surfaceDark,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusXl)), side: BorderSide(color: Colors.white.withOpacity(0.06))),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(4))),
-              const SizedBox(height: 18),
-              Text('Sort Documents', style: Theme.of(ctx).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
-              const SizedBox(height: 16),
-              _SortOption(title: 'Date Created', subtitle: 'Newest first', value: 'date', group: currentSort, icon: Icons.schedule_rounded, onTap: (v) { controller.setSortBy(v); Navigator.pop(ctx); }),
-              _SortOption(title: 'Title', subtitle: 'A-Z alphabetical', value: 'title', group: currentSort, icon: Icons.sort_by_alpha_rounded, onTap: (v) { controller.setSortBy(v); Navigator.pop(ctx); }),
-              _SortOption(title: 'File Size', subtitle: 'Largest first', value: 'size', group: currentSort, icon: Icons.data_usage_rounded, onTap: (v) { controller.setSortBy(v); Navigator.pop(ctx); }),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showCreateFolderDialog(BuildContext context, HomeController controller, String? parentId) {
-    final nameController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusXl), side: BorderSide(color: Colors.white.withOpacity(0.08))),
-        title: Text(parentId != null ? 'Create Sub-Folder' : 'New Smart Folder', style: const TextStyle(fontWeight: FontWeight.w800)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              autofocus: true,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'e.g. Invoices 2026, Passports',
-                hintStyle: TextStyle(color: AppColors.textSecondaryDark),
-                filled: true,
-                fillColor: const Color(0xFF151D3F),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.white.withOpacity(0.08))),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.white.withOpacity(0.08))),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AppColors.primaryDark, width: 1.5)),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: TextStyle(color: AppColors.textSecondaryDark))),
-          Container(
-            decoration: BoxDecoration(gradient: AppColors.primaryGradient, borderRadius: BorderRadius.circular(12)),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-              onPressed: () {
-                if (nameController.text.trim().isNotEmpty) {
-                  controller.createFolder(nameController.text.trim(), '#7C5CFF', parentId: parentId);
-                  Navigator.pop(ctx);
-                }
-              },
-              child: const Text('Create', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SortOption extends StatelessWidget {
-  final String title, subtitle, value, group;
-  final IconData icon;
-  final Function(String) onTap;
-  const _SortOption({required this.title, required this.subtitle, required this.value, required this.group, required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final selected = value == group;
-    return GestureDetector(
-      onTap: () => onTap(value),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primaryDark.withOpacity(0.15) : Colors.white.withOpacity(0.04),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: selected ? AppColors.primaryDark.withOpacity(0.4) : Colors.white.withOpacity(0.06)),
-        ),
-        child: Row(
-          children: [
-            Container(width: 38, height: 38, decoration: BoxDecoration(gradient: selected ? AppColors.primaryGradient : null, color: selected ? null : Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: selected ? Colors.white : AppColors.textSecondaryDark, size: 18)),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 14)), Text(subtitle, style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 11.5))])),
-            if (selected) const Icon(Icons.check_circle_rounded, color: AppColors.primaryDark, size: 20),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GreetingHeader extends StatelessWidget {
-  final String greeting;
-  final int docCount;
-  const _GreetingHeader({required this.greeting, required this.docCount});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(greeting, style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 13, fontWeight: FontWeight.w500, letterSpacing: 0.2)),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(gradient: AppColors.aiGradient, borderRadius: BorderRadius.circular(20)),
-                      child: const Row(children: [Icon(Icons.bolt_rounded, size: 10, color: Colors.white), SizedBox(width: 2), Text('AI ON', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800))]),
+                // ---------- Categories ----------
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 12, 4),
+                    child: Row(
+                      children: [
+                        const Text('Categories', style: TextStyle(color: Colors.white, fontSize: 16.5, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
+                        const Spacer(),
+                        _SeeAll(onTap: widget.onSeeAllDocs),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text('Haseeb', style: theme.textTheme.displayMedium?.copyWith(fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -0.8)),
-                const SizedBox(height: 2),
-                Text('$docCount documents • Secured & private', style: TextStyle(color: AppColors.textSecondaryDark.withOpacity(0.9), fontSize: 12)),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 74,
+                    child: Builder(builder: (context) {
+                      final groups = SmartCategories.group(homeState.documents);
+                      const colors = [Color(0xFF3B82F6), Color(0xFFEC4899), Color(0xFFEAB308), Color(0xFF94A3B8)];
+                      return ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                        itemCount: SmartCategories.names.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 10),
+                        itemBuilder: (context, i) {
+                          final name = SmartCategories.names[i];
+                          final count = groups[name]?.length ?? 0;
+                          return GestureDetector(
+                            onTap: () => widget.onOpenCategory?.call(name),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: colors[i].withOpacity(0.35)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.folder_rounded, color: colors[i], size: 20),
+                                  const SizedBox(width: 8),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(name, style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w700)),
+                                      Text('$count Files', style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 10.5)),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }),
+                  ),
+                ),
+
+                SliverToBoxAdapter(child: PremiumBanner(onTap: () => context.push(RouteNames.premiumPaywall))),
+                const SliverToBoxAdapter(child: SizedBox(height: 110)),
               ],
             ),
           ),
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.06),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withOpacity(0.10)),
-            ),
-            child: Icon(Icons.notifications_none_rounded, color: Colors.white.withOpacity(0.8), size: 20),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: AppColors.primaryGradient,
-              boxShadow: [BoxShadow(color: AppColors.primaryDark.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))],
-            ),
-            child: const CircleAvatar(
-              radius: 18,
-              backgroundColor: Color(0xFF151D3F),
-              child: Text('H', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatsRow extends StatelessWidget {
-  final int docs;
-  const _StatsRow({required this.docs});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: _StatCard(icon: Icons.description_rounded, label: 'Docs', value: '$docs', gradient: AppColors.primaryGradient)),
-        const SizedBox(width: 10),
-        Expanded(child: _StatCard(icon: Icons.auto_awesome_rounded, label: 'AI Scans', value: '${(docs * 1.8).toInt()}', gradient: AppColors.aiGradient)),
-        const SizedBox(width: 10),
-        Expanded(child: _StatCard(icon: Icons.cloud_done_rounded, label: 'Synced', value: '100%', gradient: AppColors.cyanGradient)),
-      ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final String label, value;
-  final Gradient gradient;
-  const _StatCard({required this.icon, required this.label, required this.value, required this.gradient});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF151D3F), Color(0xFF121A36)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
-      ),
-      child: Row(
-        children: [
-          Container(width: 32, height: 32, decoration: BoxDecoration(gradient: gradient, borderRadius: BorderRadius.circular(9)), child: Icon(icon, color: Colors.white, size: 16)),
-          const SizedBox(width: 8),
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
-            Text(label, style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 10.5, fontWeight: FontWeight.w500)),
-          ]),
-        ],
-      ),
-    );
-  }
-}
-
-class _AIToolsStrip extends StatelessWidget {
-  final Function(String) onTap;
-  const _AIToolsStrip({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final tools = [
-      {'label': 'OCR', 'icon': Icons.text_fields_rounded, 'color': AppColors.primaryGradient},
-      {'label': 'Summary', 'icon': Icons.summarize_rounded, 'color': AppColors.aiGradient},
-      {'label': 'Chat Doc', 'icon': Icons.chat_bubble_rounded, 'color': AppColors.purpleGradient},
-      {'label': 'Translate', 'icon': Icons.translate_rounded, 'color': AppColors.cyanGradient},
-      {'label': 'Protect', 'icon': Icons.shield_rounded, 'color': AppColors.goldGradient},
-    ];
-
-    return SizedBox(
-      height: 78,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: tools.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (context, i) {
-          final t = tools[i];
-          return GestureDetector(
-            onTap: () => onTap(t['label'] as String),
-            child: Container(
-              width: 68,
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.04),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.06)),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(gradient: t['color'] as Gradient, borderRadius: BorderRadius.circular(9)),
-                    child: Icon(t['icon'] as IconData, color: Colors.white, size: 16),
+          if (_importing)
+            Container(
+              color: Colors.black.withOpacity(0.6),
+              child: const Center(
+                child: Card(
+                  color: AppColors.surfaceDark,
+                  child: Padding(
+                    padding: EdgeInsets.all(22),
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      CircularProgressIndicator(color: AppColors.primaryDark),
+                      SizedBox(height: 14),
+                      Text('Importing & building PDF…', style: TextStyle(color: Colors.white, fontSize: 13)),
+                    ]),
                   ),
-                  const SizedBox(height: 6),
-                  Text(t['label'] as String, style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w600)),
-                ],
+                ),
               ),
             ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _BrowsingHeader extends StatelessWidget {
-  final HomeState homeState;
-  final HomeController homeController;
-  const _BrowsingHeader({required this.homeState, required this.homeController});
-
-  @override
-  Widget build(BuildContext context) {
-    String title = 'Documents';
-    if (homeState.isSelectionMode) title = '${homeState.selectedDocIds.length} Selected';
-    else if (homeState.isTrashView) title = 'Trash';
-    else if (homeState.isArchiveView) title = 'Archive Vault';
-    else if (homeState.selectedFolderId != null) title = 'Folder';
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 16, 12, 12),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), shape: BoxShape.circle, border: Border.all(color: Colors.white.withOpacity(0.10))),
-            child: IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white), onPressed: () {
-              if (homeState.isSelectionMode) homeController.toggleSelectionMode(false);
-              else if (homeState.isTrashView) homeController.toggleTrashView();
-              else if (homeState.isArchiveView) homeController.toggleArchiveView();
-              else homeController.selectFolder(null);
-            }),
-          ),
-          const SizedBox(width: 12),
-          Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18))),
-          if (homeState.isSelectionMode) ...[
-            IconButton(icon: const Icon(Icons.select_all_rounded, color: Colors.white70), onPressed: () => homeController.selectAllDocuments()),
-            Container(
-              decoration: BoxDecoration(gradient: AppColors.goldGradient, shape: BoxShape.circle),
-              child: IconButton(icon: const Icon(Icons.archive_rounded, color: Colors.black, size: 18), onPressed: () => homeController.batchArchiveSelected()),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFFFF5A78), Color(0xFFEF4444)]), shape: BoxShape.circle),
-              child: IconButton(icon: const Icon(Icons.delete_sweep_rounded, color: Colors.white, size: 18), onPressed: () => homeController.batchDeleteSelected()),
-            ),
-          ],
         ],
       ),
     );
   }
-}
 
-class _ScanFab extends StatefulWidget {
-  final VoidCallback onTap;
-  const _ScanFab({required this.onTap});
-
-  @override
-  State<_ScanFab> createState() => _ScanFabState();
-}
-
-class _ScanFabState extends State<_ScanFab> with SingleTickerProviderStateMixin {
-  late AnimationController _pulse;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulse = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
+  Future<void> _summarizeNow() async {
+    final doc = await DocumentPickerSheet.show(context, title: 'Summarize a Document');
+    if (doc != null && mounted) {
+      context.push(RouteNames.aiAssistant, extra: doc.id);
+    }
   }
 
-  @override
-  void dispose() {
-    _pulse.dispose();
-    super.dispose();
+  Future<void> _ocrFlow() async {
+    final doc = await DocumentPickerSheet.show(context, title: 'Extract Text (OCR)');
+    if (doc != null && mounted) {
+      context.push(RouteNames.ocrViewer, extra: doc.id);
+    }
   }
+
+  Future<void> _importGallery() async {
+    try {
+      final picker = ImagePicker();
+      final files = await picker.pickMultiImage(imageQuality: 92);
+      if (files.isEmpty || !mounted) return;
+      setState(() => _importing = true);
+
+      final paths = files.map((f) => f.path).toList();
+      final pdf = await PDFService().createPdfFromImages(
+        imagePaths: paths,
+        outputFileName: 'import_${DateTime.now().millisecondsSinceEpoch}',
+      );
+
+      final title = files.first.name.contains('.')
+          ? files.first.name.substring(0, files.first.name.lastIndexOf('.'))
+          : files.first.name;
+      final doc = DocumentItem(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: paths.length > 1 ? '$title (+${paths.length - 1})' : title,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        filePaths: paths,
+        pdfPath: pdf.path,
+        pageCount: paths.length,
+        fileSizeBytes: await pdf.exists() ? await pdf.length() : 0,
+        tags: const ['Gallery Import'],
+      );
+      await sl<DocumentRepository>().saveDocument(doc);
+      await ref.read(homeProvider.notifier).loadData();
+
+      if (mounted) {
+        setState(() => _importing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Imported ${paths.length} image${paths.length > 1 ? 's' : ''} as PDF'),
+            backgroundColor: const Color(0xFF151D3F),
+            action: SnackBarAction(label: 'VIEW', textColor: AppColors.neonCyan, onPressed: () => context.push(RouteNames.ocrViewer, extra: doc.id)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _importing = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import failed: $e'), backgroundColor: const Color(0xFF3A1220)));
+      }
+    }
+  }
+}
+
+class _SeeAll extends StatelessWidget {
+  final VoidCallback? onTap;
+  const _SeeAll({this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Text('See All', style: TextStyle(color: AppColors.neonPurple, fontSize: 12.5, fontWeight: FontWeight.w700)),
+      ),
+    );
+  }
+}
+
+class _AmbientOrbs extends StatelessWidget {
+  final Animation<double> animation;
+  const _AmbientOrbs({required this.animation});
 
   @override
   Widget build(BuildContext context) {
     return Stack(
-      alignment: Alignment.center,
       children: [
-        AnimatedBuilder(
-          animation: _pulse,
-          builder: (context, child) {
-            return Container(
-              width: 74 + 14 * _pulse.value,
-              height: 74 + 14 * _pulse.value,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primaryDark.withOpacity(0.18 - 0.12 * _pulse.value),
-              ),
-            );
-          },
-        ),
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: AppColors.scannerGradient,
-            boxShadow: [
-              BoxShadow(color: AppColors.primaryDark.withOpacity(0.45), blurRadius: 22, offset: const Offset(0, 8)),
-              BoxShadow(color: AppColors.neonCyan.withOpacity(0.25), blurRadius: 32, offset: const Offset(0, 12)),
-            ],
-            border: Border.all(color: Colors.white.withOpacity(0.18), width: 1.2),
-          ),
-          child: Material(
-            color: Colors.transparent,
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: widget.onTap,
-              child: const Icon(Icons.document_scanner_rounded, color: Colors.white, size: 28),
+        Positioned(
+          top: -120,
+          left: -80,
+          child: AnimatedBuilder(
+            animation: animation,
+            builder: (context, child) => Transform.translate(offset: Offset(12 * animation.value, 0), child: child),
+            child: Container(
+              width: 340,
+              height: 340,
+              decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [AppColors.neonPurple.withOpacity(0.20), Colors.transparent])),
             ),
+          ),
+        ),
+        Positioned(
+          bottom: 60,
+          right: -90,
+          child: Container(
+            width: 380,
+            height: 380,
+            decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [AppColors.neonBlue.withOpacity(0.16), Colors.transparent])),
+          ),
+        ),
+        Positioned(
+          top: 300,
+          right: 40,
+          child: Container(
+            width: 220,
+            height: 220,
+            decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [AppColors.neonCyan.withOpacity(0.08), Colors.transparent])),
           ),
         ),
       ],
@@ -735,75 +395,282 @@ class _ScanFabState extends State<_ScanFab> with SingleTickerProviderStateMixin 
   }
 }
 
-class _BottomNav extends StatelessWidget {
-  final int currentIndex;
-  final VoidCallback onHomeTap;
-  final VoidCallback onPdfTap;
-  final VoidCallback onAiTap;
-  final VoidCallback onSettingsTap;
-
-  const _BottomNav({required this.currentIndex, required this.onHomeTap, required this.onPdfTap, required this.onAiTap, required this.onSettingsTap});
+class _SmartSearchBar extends StatelessWidget {
+  final ValueChanged<String> onChanged;
+  final VoidCallback onMicTap;
+  const _SmartSearchBar({required this.onChanged, required this.onMicTap});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+      height: 52,
       decoration: BoxDecoration(
-        color: const Color(0xFF101735).withOpacity(0.92),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.45), blurRadius: 28, offset: const Offset(0, 12))],
-        border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+        color: const Color(0xFF12172E),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.35), blurRadius: 16, offset: const Offset(0, 6))],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: SafeArea(
-          top: false,
-          child: SizedBox(
-            height: 68,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _NavItem(icon: Icons.home_rounded, label: 'Home', selected: currentIndex == 0, onTap: onHomeTap),
-                _NavItem(icon: Icons.picture_as_pdf_rounded, label: 'PDF Tools', selected: false, onTap: onPdfTap),
-                const SizedBox(width: 52),
-                _NavItem(icon: Icons.auto_awesome_rounded, label: 'AI Chat', selected: false, onTap: onAiTap),
-                _NavItem(icon: Icons.settings_rounded, label: 'Settings', selected: false, onTap: onSettingsTap),
-              ],
+      child: Row(
+        children: [
+          const SizedBox(width: 16),
+          Icon(Icons.search_rounded, color: AppColors.textSecondaryDark, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              onChanged: onChanged,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Search documents or ask anything...',
+                hintStyle: TextStyle(color: AppColors.textSecondaryDark, fontSize: 13.5),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
             ),
           ),
+          GestureDetector(
+            onTap: onMicTap,
+            child: Container(
+              width: 36,
+              height: 36,
+              margin: const EdgeInsets.only(right: 8),
+              decoration: BoxDecoration(
+                gradient: AppColors.brandGradient,
+                shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: AppColors.neonPurple.withOpacity(0.35), blurRadius: 10)],
+              ),
+              child: const Icon(Icons.mic_rounded, color: Colors.white, size: 17),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AiSummaryHero extends StatelessWidget {
+  final VoidCallback onSummarize;
+  const _AiSummaryHero({required this.onSummarize});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(1.4),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [AppColors.neonPurple.withOpacity(0.55), AppColors.neonCyan.withOpacity(0.35)]),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 18, 14, 18),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [Color(0xFF151032), Color(0xFF0D1226)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+          borderRadius: BorderRadius.circular(22.6),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('AI Document Summary', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Get instant summary, key insights & important points from any document in seconds.',
+                    style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 12, height: 1.5),
+                  ),
+                  const SizedBox(height: 14),
+                  GestureDetector(
+                    onTap: onSummarize,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFFA855F7)]),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [BoxShadow(color: AppColors.neonPurple.withOpacity(0.4), blurRadius: 14, offset: const Offset(0, 5))],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Summarize Now', style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w800)),
+                          SizedBox(width: 6),
+                          Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 14),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const CustomPaint(size: Size(112, 112), painter: _AiChipPainter()),
+          ],
         ),
       ),
     );
   }
 }
 
-class _NavItem extends StatelessWidget {
-  final IconData icon;
+/// Glowing "AI chip" artwork with circuit traces (right side of the hero card).
+class _AiChipPainter extends CustomPainter {
+  const _AiChipPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final k = size.width / 100;
+    Offset p(double x, double y) => Offset(x * k, y * k);
+
+    // circuit traces
+    final traces = [
+      [p(50, 22), p(50, 6)], [p(50, 78), p(50, 94)],
+      [p(22, 50), p(6, 50)], [p(78, 50), p(94, 50)],
+      [p(30, 30), p(16, 16)], [p(70, 30), p(84, 16)],
+      [p(30, 70), p(16, 84)], [p(70, 70), p(84, 84)],
+    ];
+    for (final t in traces) {
+      canvas.drawLine(t[0], t[1], Paint()..color = const Color(0xFF22D3EE).withOpacity(0.7)..strokeWidth = 1.6 * k..strokeCap = StrokeCap.round);
+      canvas.drawCircle(t[1], 2.4 * k, Paint()..color = const Color(0xFF22D3EE));
+    }
+
+    final chipRect = Rect.fromLTRB(26 * k, 26 * k, 74 * k, 74 * k);
+    final rrect = RRect.fromRectAndRadius(chipRect, Radius.circular(10 * k));
+    canvas.saveLayer(Rect.fromLTRB(0, 0, size.width, size.height), Paint());
+    canvas.drawRRect(rrect, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3 * k
+      ..shader = const LinearGradient(colors: [Color(0xFFA855F7), Color(0xFF22D3EE)]).createShader(chipRect)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6));
+    canvas.restore();
+
+    canvas.drawRRect(rrect, Paint()
+      ..shader = const LinearGradient(colors: [Color(0xFF3B1D7A), Color(0xFF1E1B4B)], begin: Alignment.topLeft, end: Alignment.bottomRight).createShader(chipRect));
+    canvas.drawRRect(rrect, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.4 * k
+      ..shader = const LinearGradient(colors: [Color(0xFFA855F7), Color(0xFF22D3EE)]).createShader(chipRect));
+
+    final tp = TextPainter(
+      text: TextSpan(
+        text: 'AI',
+        style: TextStyle(color: Colors.white, fontSize: 20 * k, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, Offset(size.width / 2 - tp.width / 2, size.height / 2 - tp.height / 2));
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _QuickActionTile extends StatelessWidget {
   final String label;
-  final bool selected;
+  final IconData icon;
+  final Color color;
   final VoidCallback onTap;
-  const _NavItem({required this.icon, required this.label, required this.selected, required this.onTap});
+  const _QuickActionTile({required this.label, required this.icon, required this.color, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primaryDark.withOpacity(0.18) : Colors.transparent,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: selected ? AppColors.primaryDark.withOpacity(0.35) : Colors.transparent, width: 1),
-        ),
+      child: Container(
+        width: 72,
+        margin: const EdgeInsets.only(right: 10),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: selected ? Colors.white : AppColors.textSecondaryDark, size: 20),
-            const SizedBox(height: 3),
-            Text(label, style: TextStyle(color: selected ? Colors.white : AppColors.textSecondaryDark, fontSize: 10, fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.14),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: color.withOpacity(0.4)),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 9.8, fontWeight: FontWeight.w600, height: 1.25),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecentDocRow extends StatelessWidget {
+  final DocumentItem doc;
+  final VoidCallback onTap;
+  const _RecentDocRow({required this.doc, required this.onTap});
+
+  ({String ext, Color color, IconData icon}) _type() {
+    final name = doc.title.toLowerCase();
+    if (name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png')) {
+      return (ext: 'JPG', color: const Color(0xFF10B981), icon: Icons.image_rounded);
+    }
+    if (name.endsWith('.docx') || name.endsWith('.doc') || name.endsWith('.txt')) {
+      return (ext: 'DOCX', color: const Color(0xFF3B82F6), icon: Icons.description_rounded);
+    }
+    return (ext: 'PDF', color: const Color(0xFFEF4444), icon: Icons.picture_as_pdf_rounded);
+  }
+
+  String _when(DateTime d) {
+    final now = DateTime.now();
+    final yesterday = now.subtract(const Duration(days: 1));
+    final time = DateFormat('hh:mm a').format(d);
+    if (d.year == now.year && d.month == now.month && d.day == now.day) return 'Today, $time';
+    if (d.year == yesterday.year && d.month == yesterday.month && d.day == yesterday.day) return 'Yesterday, $time';
+    return '${DateFormat('d MMM yyyy').format(d)}, $time';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = _type();
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF10152B),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.06)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(color: t.color.withOpacity(0.16), borderRadius: BorderRadius.circular(10)),
+                child: Icon(t.icon, color: t.color, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(doc.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 3),
+                    Text(_when(doc.createdAt), style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 11)),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(color: t.color.withOpacity(0.18), borderRadius: BorderRadius.circular(6)),
+                child: Text(t.ext, style: TextStyle(color: t.color, fontSize: 9.5, fontWeight: FontWeight.w800)),
+              ),
+              const SizedBox(width: 6),
+              Icon(Icons.chevron_right_rounded, color: AppColors.textTertiaryDark, size: 20),
+            ],
+          ),
         ),
       ),
     );
