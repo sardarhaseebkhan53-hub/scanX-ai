@@ -1,0 +1,33 @@
+{
+  "merchant": "Sardar Haseeb Technologies Store",
+  "date": "2026-08-02",
+  "time": "08:45 AM",
+  "subtotal": 24.50,
+  "tax": 2.21,
+  "totalAmount": 26.71,
+  "currency": "USD",
+  "paymentMethod": "Visa ending in 4092",
+  "items": [
+    {
+      "description": "Single Origin Espresso (2)",
+      "quantity": 2,
+      "unitPrice": 5.50,
+      "totalPrice": 11.00
+    },
+    {
+      "description": "Almond Croissant",
+      "quantity": 1,
+      "unitPrice": 6.50,
+      "totalPrice": 6.50
+    },
+    {
+      "description": "Avocado Toast",
+      "quantity": 1,
+      "unitPrice": 7.00,
+      "totalPrice": 7.00
+    }
+  ],
+  "category": "Meals & Dining",
+  "suggestedFolderName": "Receipts & Expense Reports",
+  "suggestedTitle": "SardarHaseeb_Receipt_Aug02"
+}

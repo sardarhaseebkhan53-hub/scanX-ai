@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ad-services-config>
+    <!-- AdServices API configuration for Google Mobile Ads & ScanX AI -->
+    <attribution allowAdId="true" allowAttribution="true" />
+    <custom-audiences allowAdId="true" allowCustomAudiences="true" />
+    <protected-signals allowAdId="true" allowProtectedSignals="true" />
+    <topics allowAdId="true" allowTopics="true" />
+</ad-services-config>

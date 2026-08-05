@@ -1,0 +1,81 @@
+import 'package:dio/dio.dart';
+import 'package:get_it/get_it.dart';
+
+import '../../data/datasources/firebase_cloud_datasource.dart';
+import '../../data/datasources/hive_local_datasource.dart';
+import '../../data/repositories/ai_repository_impl.dart';
+import '../../data/repositories/document_repository_impl.dart';
+import '../../data/repositories/security_repository_impl.dart';
+import '../../domain/repositories/ai_repository.dart';
+import '../../domain/repositories/document_repository.dart';
+import '../../domain/repositories/security_repository.dart';
+import '../../services/ai/ai_service.dart';
+import '../../services/cloud/cloud_sync_service.dart';
+import '../../services/monetization/ad_service.dart';
+import '../../services/monetization/billing_service.dart';
+import '../../services/ocr/ocr_service.dart';
+import '../../services/pdf/pdf_service.dart';
+import '../../services/security/security_service.dart';
+import '../../services/storage/local_storage_service.dart';
+import '../../services/storage/secure_storage_service.dart';
+
+final GetIt sl = GetIt.instance;
+
+Future<void> initDependencies() async {
+  // External
+  sl.registerLazySingleton<Dio>(() => Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 15),
+      )));
+
+  // Core Storage & Services
+  final localStorage = LocalStorageService();
+  await localStorage.init();
+  sl.registerSingleton<LocalStorageService>(localStorage);
+
+  sl.registerLazySingleton<SecureStorageService>(() => SecureStorageService());
+
+  sl.registerLazySingleton<OCRService>(() => OCRService());
+  sl.registerLazySingleton<PDFService>(() => PDFService());
+
+  sl.registerLazySingleton<AIService>(() => PluggableAIService(
+        dio: sl<Dio>(),
+        provider: 'gemini',
+      ));
+
+  sl.registerLazySingleton<CloudSyncService>(
+      () => CloudSyncService(localStorage: sl<LocalStorageService>()));
+
+  sl.registerLazySingleton<SecurityService>(
+      () => SecurityService(secureStorage: sl<SecureStorageService>()));
+
+  final billingService = BillingService();
+  await billingService.init();
+  sl.registerSingleton<BillingService>(billingService);
+
+  final adService = AdService();
+  await adService.init();
+  sl.registerSingleton<AdService>(adService);
+
+  // Data Sources
+  sl.registerLazySingleton<HiveLocalDataSource>(
+      () => HiveLocalDataSource(localStorageService: sl<LocalStorageService>()));
+  sl.registerLazySingleton<FirebaseCloudDataSource>(
+      () => FirebaseCloudDataSource(cloudSyncService: sl<CloudSyncService>()));
+
+  // Repositories
+  sl.registerLazySingleton<DocumentRepository>(() => DocumentRepositoryImpl(
+        localDataSource: sl<HiveLocalDataSource>(),
+        cloudDataSource: sl<FirebaseCloudDataSource>(),
+      ));
+
+  sl.registerLazySingleton<AIRepository>(() => AIRepositoryImpl(
+        aiService: sl<AIService>(),
+        ocrService: sl<OCRService>(),
+      ));
+
+  sl.registerLazySingleton<SecurityRepository>(() => SecurityRepositoryImpl(
+        securityService: sl<SecurityService>(),
+        secureStorageService: sl<SecureStorageService>(),
+      ));
+}

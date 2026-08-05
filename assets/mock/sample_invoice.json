@@ -1,0 +1,28 @@
+{
+  "invoiceNumber": "INV-2026-08942",
+  "vendorName": "Sardar Haseeb Technologies",
+  "date": "2026-08-02",
+  "dueDate": "2026-09-02",
+  "subtotal": 1450.00,
+  "tax": 116.00,
+  "totalAmount": 1566.00,
+  "currency": "USD",
+  "items": [
+    {
+      "description": "Enterprise API Gateway License (Annual)",
+      "quantity": 1,
+      "unitPrice": 1200.00,
+      "totalPrice": 1200.00
+    },
+    {
+      "description": "24/7 Dedicated AI Infrastructure Support",
+      "quantity": 1,
+      "unitPrice": 250.00,
+      "totalPrice": 250.00
+    }
+  ],
+  "extractedEmails": ["billing@sardarhaseeb.com", "support@sardarhaseeb.com"],
+  "extractedPhones": ["+1-800-555-0199"],
+  "suggestedFolderName": "Invoices 2026",
+  "suggestedTitle": "SardarHaseeb_Invoice_8942"
+}

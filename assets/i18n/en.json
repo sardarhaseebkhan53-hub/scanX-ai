@@ -1,0 +1,19 @@
+{
+  "app_title": "ScanX AI",
+  "app_tagline": "AI-Powered Premium Enterprise Document Scanner",
+  "home_title": "My Documents",
+  "search_placeholder": "Search by filename, OCR text, or tags...",
+  "scan_button": "Scan New Document",
+  "ai_assistant": "AI Assistant",
+  "cloud_sync": "Cloud Sync",
+  "security_settings": "Enterprise Security",
+  "premium_upgrade": "Upgrade to ScanX Premium",
+  "empty_documents_title": "No Documents Found",
+  "empty_documents_subtitle": "Tap the camera button to scan your first document, receipt, or ID card with AI auto-enhancement.",
+  "camera_mode_document": "Document",
+  "camera_mode_receipt": "Receipt",
+  "camera_mode_book": "Book",
+  "camera_mode_passport": "Passport",
+  "camera_mode_id": "ID Card",
+  "camera_mode_batch": "Batch Mode"
+}
