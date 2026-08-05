@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -65,6 +66,7 @@ class PdfController extends StateNotifier<PdfEditorState> {
   final DocumentRepository _repository;
   final PDFService _pdfService;
   final ImageProcessingService _imageProcessor = ImageProcessingService();
+  final List<Map<String, dynamic>> _redoStack = [];
 
   PdfController({DocumentRepository? repository, PDFService? pdfService})
       : _repository = repository ?? sl<DocumentRepository>(),
@@ -150,6 +152,7 @@ class PdfController extends StateNotifier<PdfEditorState> {
       'isHighlight': isHighlight,
       'timestamp': DateTime.now().toIso8601String(),
     };
+    _redoStack.clear();
     final updatedList = List<Map<String, dynamic>>.from(state.annotations)..add(newAnn);
     state = state.copyWith(
       annotations: updatedList,
@@ -157,6 +160,25 @@ class PdfController extends StateNotifier<PdfEditorState> {
           ? 'Highlighted text annotation added'
           : 'Added drawing/text annotation: "$text"',
     );
+  }
+
+  void undoLastAction() {
+    if (state.annotations.isEmpty) {
+      state = state.copyWith(successMessage: 'Nothing to undo.');
+      return;
+    }
+    final updated = List<Map<String, dynamic>>.from(state.annotations);
+    _redoStack.add(updated.removeLast());
+    state = state.copyWith(annotations: updated, successMessage: 'Undid last annotation.');
+  }
+
+  void redoLastAction() {
+    if (_redoStack.isEmpty) {
+      state = state.copyWith(successMessage: 'Nothing to redo.');
+      return;
+    }
+    final updated = List<Map<String, dynamic>>.from(state.annotations)..add(_redoStack.removeLast());
+    state = state.copyWith(annotations: updated, successMessage: 'Redid annotation.');
   }
 
   Future<void> printDocument() async {
@@ -490,6 +512,6 @@ class PdfController extends StateNotifier<PdfEditorState> {
 
 final pdfProvider = StateNotifierProvider.family<PdfController, PdfEditorState, String>((ref, docId) {
   final controller = PdfController();
-  controller.loadDocument(docId);
+  unawaited(controller.loadDocument(docId));
   return controller;
 });

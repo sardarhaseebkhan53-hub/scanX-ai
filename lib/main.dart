@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'config/firebase/firebase_config.dart';
@@ -13,15 +12,8 @@ import 'features/settings/presentation/controllers/settings_controller.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  try {
-    // Enforce vertical portrait orientation for optimal camera & document editing
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-  } catch (e) {
-    AppLogger.w('Orientation lock not supported on this device/platform: $e', 'Main');
-  }
+  // Do not force a fixed orientation. ScanX AI must adapt cleanly to phones,
+  // tablets, foldables, portrait, and landscape using responsive layouts.
 
   try {
     // Initialize Firebase Enterprise Stack (Analytics, Crashlytics, FCM, Remote Config)

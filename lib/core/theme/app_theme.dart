@@ -95,7 +95,6 @@ class AppTheme {
         onPrimary: Colors.white,
         onSecondary: Colors.white,
         onSurface: AppColors.textPrimaryDark,
-        background: AppColors.backgroundDark,
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.backgroundDark.withOpacity(0.85),

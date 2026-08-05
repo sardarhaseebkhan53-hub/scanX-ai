@@ -44,7 +44,7 @@ class CloudSyncScreen extends ConsumerWidget {
                       const SizedBox(height: 14),
                       const Text('Files secured & backed up', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
                       const SizedBox(height: 4),
-                      Text('Last sync: ${state.lastSyncedTime}', style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 11.5)),
+                      Text('Last sync: ${state.lastSyncedTime ?? 'Never'}', style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 11.5)),
                       const SizedBox(height: 18),
                       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Storage', style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 12)), Text('4.25 GB / 15 GB', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))]),
                       const SizedBox(height: 8),

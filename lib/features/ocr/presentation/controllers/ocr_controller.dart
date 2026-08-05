@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../config/injection/injection_container.dart';
@@ -71,6 +73,7 @@ class OCRController extends StateNotifier<OCRState> {
     state = state.copyWith(isLoading: true);
     try {
       final doc = await _documentRepo.getDocumentById(documentId);
+      if (!mounted) return;
       if (doc == null) {
         state = state.copyWith(isLoading: false, errorMessage: 'Document not found.');
         return;
@@ -78,6 +81,7 @@ class OCRController extends StateNotifier<OCRState> {
 
       final text = doc.ocrText ?? 'No OCR text available for this scan.';
       final ocrResult = await _aiRepo.extractEntities(text);
+      if (!mounted) return;
 
       state = state.copyWith(
         document: doc,
@@ -157,6 +161,6 @@ class OCRController extends StateNotifier<OCRState> {
 
 final ocrProvider = StateNotifierProvider.family<OCRController, OCRState, String>((ref, docId) {
   final controller = OCRController();
-  controller.loadDocument(docId);
+  unawaited(controller.loadDocument(docId));
   return controller;
 });

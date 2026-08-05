@@ -43,8 +43,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with TickerProvid
                 ? CameraPreview(scannerController.cameraController!)
                 : _FallbackPreview(onImport: () async {
                     await scannerController.importFromGallery();
-                    if (scannerState.capturedImages.isNotEmpty && context.mounted) {
-                      context.push(RouteNames.scanPreview, extra: scannerState.capturedImages);
+                    final updatedImages = ref.read(scannerProvider).capturedImages;
+                    if (updatedImages.isNotEmpty && context.mounted) {
+                      context.push(RouteNames.scanPreview, extra: updatedImages);
                     }
                   }),
           ),
@@ -118,36 +119,48 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with TickerProvid
             top: MediaQuery.of(context).padding.top + 12,
             left: 16,
             right: 16,
-            child: Row(
-              children: [
-                _GlassBtn(icon: Icons.close_rounded, onTap: () => Navigator.pop(context)),
-                const SizedBox(width: 10),
-                GestureDetector(
-                  onTap: () => scannerController.toggleAutoCapture(),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      gradient: scannerState.isAutoCaptureEnabled ? AppColors.scannerGradient : null,
-                      color: scannerState.isAutoCaptureEnabled ? null : Colors.black.withOpacity(0.45),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: scannerState.isAutoCaptureEnabled ? Colors.white.withOpacity(0.22) : Colors.white.withOpacity(0.12)),
-                      boxShadow: scannerState.isAutoCaptureEnabled ? [BoxShadow(color: AppColors.primaryDark.withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 4))] : null,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 360;
+                return Row(
+                  children: [
+                    _GlassBtn(icon: Icons.close_rounded, onTap: () => Navigator.pop(context)),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => scannerController.toggleAutoCapture(),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          gradient: scannerState.isAutoCaptureEnabled ? AppColors.scannerGradient : null,
+                          color: scannerState.isAutoCaptureEnabled ? null : Colors.black.withOpacity(0.45),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: scannerState.isAutoCaptureEnabled ? Colors.white.withOpacity(0.22) : Colors.white.withOpacity(0.12)),
+                          boxShadow: scannerState.isAutoCaptureEnabled ? [BoxShadow(color: AppColors.primaryDark.withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 4))] : null,
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(scannerState.isAutoCaptureEnabled ? Icons.auto_awesome_rounded : Icons.center_focus_strong_rounded, color: Colors.white, size: 14),
+                          const SizedBox(width: 6),
+                          Text(
+                            compact ? (scannerState.isAutoCaptureEnabled ? 'AI' : 'Manual') : (scannerState.isAutoCaptureEnabled ? 'AI Auto ON' : 'Manual'),
+                            style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w700),
+                          ),
+                        ]),
+                      ),
                     ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(scannerState.isAutoCaptureEnabled ? Icons.auto_awesome_rounded : Icons.center_focus_strong_rounded, color: Colors.white, size: 14),
-                      const SizedBox(width: 6),
-                      Text(scannerState.isAutoCaptureEnabled ? 'AI Auto ON' : 'Manual', style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w700)),
-                    ]),
-                  ),
-                ),
-                const Spacer(),
-                _GlassBtn(icon: Icons.grid_on_rounded, active: scannerState.isGridOverlayOn, onTap: () => scannerController.toggleGridOverlay()),
-                const SizedBox(width: 8),
-                _GlassBtn(icon: scannerState.timerSeconds > 0 ? Icons.timer_rounded : Icons.timer_off_rounded, active: scannerState.timerSeconds > 0, onTap: () => scannerController.cycleTimer()),
-                const SizedBox(width: 8),
-                _GlassBtn(icon: _getFlashIcon(scannerState.flashMode), active: scannerState.flashMode != 'off', onTap: () => scannerController.cycleFlashMode()),
-              ],
+                    const Spacer(),
+                    _GlassBtn(icon: Icons.grid_on_rounded, active: scannerState.isGridOverlayOn, onTap: () => scannerController.toggleGridOverlay()),
+                    SizedBox(width: compact ? 6 : 8),
+                    _GlassBtn(icon: scannerState.timerSeconds > 0 ? Icons.timer_rounded : Icons.timer_off_rounded, active: scannerState.timerSeconds > 0, onTap: () => scannerController.cycleTimer()),
+                    SizedBox(width: compact ? 6 : 8),
+                    if (scannerState.canSwitchCamera) ...[
+                      _GlassBtn(icon: Icons.cameraswitch_rounded, onTap: () => scannerController.switchCamera()),
+                      SizedBox(width: compact ? 6 : 8),
+                    ],
+                    _GlassBtn(icon: _getFlashIcon(scannerState.flashMode), active: scannerState.flashMode != 'off', onTap: () => scannerController.cycleFlashMode()),
+                  ],
+                );
+              },
             ),
           ),
 
@@ -158,6 +171,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with TickerProvid
             right: 20,
             child: Center(
               child: Container(
+                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width - 40),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: scannerState.isBlurDetected ? const Color(0xFFFF5A78).withOpacity(0.92) : Colors.black.withOpacity(0.55),
@@ -175,7 +189,14 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with TickerProvid
                       child: Icon(scannerState.isBlurDetected ? Icons.warning_amber_rounded : Icons.verified_rounded, color: scannerState.isBlurDetected ? Colors.white : AppColors.neonGreen, size: 14),
                     ),
                     const SizedBox(width: 8),
-                    Text(scannerState.qualityFeedback, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 11.5)),
+                    Flexible(
+                      child: Text(
+                        scannerState.qualityFeedback,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 11.5),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -269,19 +290,21 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with TickerProvid
                       children: [
                         _CaptureSideBtn(icon: Icons.photo_library_rounded, label: 'Gallery', onTap: () async {
                           await scannerController.importFromGallery();
-                          if (scannerState.capturedImages.isNotEmpty && context.mounted) {
-                            context.push(RouteNames.scanPreview, extra: scannerState.capturedImages);
+                          final updatedImages = ref.read(scannerProvider).capturedImages;
+                          if (updatedImages.isNotEmpty && context.mounted) {
+                            context.push(RouteNames.scanPreview, extra: updatedImages);
                           }
                         }),
                         GestureDetector(
-                          onTap: () async {
-                            final path = await scannerController.capturePhoto();
-                            if (path != null && context.mounted) {
-                              if (scannerState.currentMode != ScanMode.batch) {
-                                context.push(RouteNames.crop, extra: path);
-                              }
-                            }
-                          },
+                          onTap: scannerState.isCapturing
+                              ? null
+                              : () async {
+                                  final path = await scannerController.capturePhoto();
+                                  final latestMode = ref.read(scannerProvider).currentMode;
+                                  if (path != null && context.mounted && latestMode != ScanMode.batch) {
+                                    context.push(RouteNames.crop, extra: path);
+                                  }
+                                },
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
@@ -299,7 +322,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> with TickerProvid
                                 ),
                               ),
                               Container(width: 70, height: 70, decoration: BoxDecoration(shape: BoxShape.circle, gradient: AppColors.scannerGradient, boxShadow: [BoxShadow(color: AppColors.primaryDark.withOpacity(0.6), blurRadius: 12)])),
-                              const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 30),
+                              scannerState.isCapturing
+                                  ? const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2.6, color: Colors.white))
+                                  : const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 30),
                               if (scannerState.timerSeconds > 0)
                                 Container(
                                   width: 84,

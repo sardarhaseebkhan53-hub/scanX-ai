@@ -19,22 +19,9 @@ class MainShell extends ConsumerStatefulWidget {
   ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends ConsumerState<MainShell> with TickerProviderStateMixin {
+class _MainShellState extends ConsumerState<MainShell> {
   int _tab = 0;
   String? _docsFilter;
-  late AnimationController _pulse;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulse = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
-  }
-
-  @override
-  void dispose() {
-    _pulse.dispose();
-    super.dispose();
-  }
 
   void _goto(int tab) => setState(() => _tab = tab);
 

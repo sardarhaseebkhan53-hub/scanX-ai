@@ -71,6 +71,8 @@ class QRService {
       return 'url';
     } else if (trim.startsWith('mailto:') || RegExp(r'^\S+@\S+\.\S+$').hasMatch(trim)) {
       return 'email';
+    } else if (RegExp(r'^(?:\d{8}|\d{12,14})$').hasMatch(trim)) {
+      return 'barcode';
     } else if (trim.startsWith('tel:') || RegExp(r'^\+?\d{8,15}$').hasMatch(trim)) {
       return 'phone';
     } else if (trim.startsWith('smsto:') || trim.startsWith('sms:')) {

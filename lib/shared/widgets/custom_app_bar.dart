@@ -36,7 +36,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           centerTitle: false,
           titleSpacing: 0,
           title: leading != null
-              ? Row(children: [leading!, const SizedBox(width: 8), _buildTitle(context)])
+              ? Row(children: [leading!, const SizedBox(width: 8), Expanded(child: _buildTitle(context))])
               : _buildTitle(context),
           leading: leading ??
               (showBackButton && Navigator.of(context).canPop()
@@ -80,10 +80,14 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         children: [
           Text(
             title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: theme.textTheme.titleLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: -0.3),
           ),
           Text(
             subtitle!,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textSecondaryDark, fontSize: 11.5, letterSpacing: 0.2),
           ),
         ],
@@ -91,6 +95,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     }
     return Text(
       title,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: theme.textTheme.titleLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: -0.3),
     );
   }

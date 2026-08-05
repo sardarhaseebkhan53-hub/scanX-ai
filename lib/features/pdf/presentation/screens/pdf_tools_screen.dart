@@ -4,6 +4,7 @@ import '../../../../config/routes/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
+import '../../../../shared/widgets/document_picker_sheet.dart';
 import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/tool_card.dart';
 
@@ -40,6 +41,18 @@ class _PdfToolsScreenState extends State<PdfToolsScreen> {
     _ToolSpec('E-Signature', 'Sign documents', Icons.draw_rounded, AppColors.aiGradient, isPro: true),
     _ToolSpec('OCR Scan', 'Extract text AI', Icons.text_snippet_rounded, AppColors.aiGradient),
   ];
+
+  Future<void> _openTool(_ToolSpec tool) async {
+    final doc = await DocumentPickerSheet.show(context, title: '${tool.title}: Choose a document');
+    if (!mounted) return;
+    if (doc == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select or scan a document first.'), backgroundColor: Color(0xFF151D3F)),
+      );
+      return;
+    }
+    context.push(RouteNames.pdfEditor, extra: doc.id);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,20 +113,26 @@ class _PdfToolsScreenState extends State<PdfToolsScreen> {
               const SliverToBoxAdapter(child: SectionHeader(title: 'All Tools', icon: Icons.dashboard_customize_rounded)),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-                sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.35,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final tool = filtered[index];
-                      return ToolCard(title: tool.title, subtitle: tool.subtitle, icon: tool.icon, gradient: tool.gradient, isPro: tool.isPro, onTap: () => context.push(RouteNames.pdfEditor, extra: 'doc_integration_01'));
-                    },
-                    childCount: filtered.length,
-                  ),
+                sliver: SliverLayoutBuilder(
+                  builder: (context, constraints) {
+                    final width = constraints.crossAxisExtent;
+                    final columns = width >= 900 ? 4 : (width >= 620 ? 3 : 2);
+                    return SliverGrid(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: columns,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: width < 360 ? 1.12 : 1.35,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final tool = filtered[index];
+                          return ToolCard(title: tool.title, subtitle: tool.subtitle, icon: tool.icon, gradient: tool.gradient, isPro: tool.isPro, onTap: () => _openTool(tool));
+                        },
+                        childCount: filtered.length,
+                      ),
+                    );
+                  },
                 ),
               ),
             ],

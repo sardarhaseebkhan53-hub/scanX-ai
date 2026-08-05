@@ -57,6 +57,10 @@ class ScannerState {
   final bool isBurstMode;
   final int aiQualityScore;
   final String qualityFeedback;
+  final bool canSwitchCamera;
+  final double zoomLevel;
+  final double minZoomLevel;
+  final double maxZoomLevel;
 
   const ScannerState({
     this.isInitialized = false,
@@ -80,6 +84,10 @@ class ScannerState {
     this.isBurstMode = false,
     this.aiQualityScore = 98,
     this.qualityFeedback = '⚡ AI Quality Score: 98/100 • Sharp & Aligned',
+    this.canSwitchCamera = false,
+    this.zoomLevel = 1.0,
+    this.minZoomLevel = 1.0,
+    this.maxZoomLevel = 1.0,
   });
 
   ScannerState copyWith({
@@ -104,6 +112,10 @@ class ScannerState {
     bool? isBurstMode,
     int? aiQualityScore,
     String? qualityFeedback,
+    bool? canSwitchCamera,
+    double? zoomLevel,
+    double? minZoomLevel,
+    double? maxZoomLevel,
   }) {
     return ScannerState(
       isInitialized: isInitialized ?? this.isInitialized,
@@ -127,6 +139,10 @@ class ScannerState {
       isBurstMode: isBurstMode ?? this.isBurstMode,
       aiQualityScore: aiQualityScore ?? this.aiQualityScore,
       qualityFeedback: qualityFeedback ?? this.qualityFeedback,
+      canSwitchCamera: canSwitchCamera ?? this.canSwitchCamera,
+      zoomLevel: zoomLevel ?? this.zoomLevel,
+      minZoomLevel: minZoomLevel ?? this.minZoomLevel,
+      maxZoomLevel: maxZoomLevel ?? this.maxZoomLevel,
     );
   }
 }
@@ -136,35 +152,92 @@ class ScannerController extends StateNotifier<ScannerState> {
 
   CameraController? _cameraController;
   CameraController? get cameraController => _cameraController;
+  List<CameraDescription> _cameras = const [];
+  int _cameraIndex = 0;
 
   final ImagePicker _imagePicker = ImagePicker();
   final ImageProcessingService _imageProcessor = ImageProcessingService();
 
   ScannerController() : super(const ScannerState()) {
-    initCamera();
+    unawaited(initCamera());
   }
 
-  Future<void> initCamera() async {
+  Future<void> initCamera({int cameraIndex = 0}) async {
     try {
-      final cameras = await availableCameras();
-      if (cameras.isEmpty) {
-        state = state.copyWith(errorMessage: 'No camera hardware found on device.');
+      _cameras = await availableCameras();
+      if (_cameras.isEmpty) {
+        if (mounted) {
+          state = state.copyWith(errorMessage: 'No camera hardware found on device.');
+        }
         return;
       }
 
-      _cameraController = CameraController(
-        cameras.first,
-        ResolutionPreset.high,
-        enableAudio: false,
-      );
+      _cameraIndex = cameraIndex.clamp(0, _cameras.length - 1).toInt();
+      await _cameraController?.dispose();
 
-      await _cameraController!.initialize();
-      state = state.copyWith(isInitialized: true);
-      AppLogger.i('Camera initialized successfully.', _tag);
+      final controller = CameraController(
+        _cameras[_cameraIndex],
+        ResolutionPreset.max,
+        enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.jpeg,
+      );
+      _cameraController = controller;
+
+      await controller.initialize();
+      if (!mounted || _cameraController != controller) return;
+
+      try {
+        await controller.setFocusMode(FocusMode.auto);
+        await controller.setExposureMode(ExposureMode.auto);
+        await controller.setFlashMode(FlashMode.off);
+      } catch (e) {
+        AppLogger.w('Camera focus/exposure tuning skipped: $e', _tag);
+      }
+
+      double minZoom = 1.0;
+      double maxZoom = 1.0;
+      try {
+        minZoom = await controller.getMinZoomLevel();
+        maxZoom = await controller.getMaxZoomLevel();
+      } catch (_) {}
+
+      state = state.copyWith(
+        isInitialized: true,
+        errorMessage: null,
+        flashMode: 'off',
+        isFlashOn: false,
+        canSwitchCamera: _cameras.length > 1,
+        minZoomLevel: minZoom,
+        maxZoomLevel: maxZoom,
+        zoomLevel: minZoom,
+      );
+      AppLogger.i('Camera initialized at maximum resolution (${_cameras[_cameraIndex].lensDirection}).', _tag);
     } catch (e) {
       AppLogger.e('Camera initialization failed: $e', tag: _tag);
-      state = state.copyWith(
-          errorMessage: 'Camera initialization failed. You can still import images from gallery.');
+      if (mounted) {
+        state = state.copyWith(
+          isInitialized: false,
+          errorMessage: 'Camera initialization failed. You can still import images from gallery.',
+        );
+      }
+    }
+  }
+
+  Future<void> switchCamera() async {
+    if (_cameras.length < 2) return;
+    final nextIndex = (_cameraIndex + 1) % _cameras.length;
+    state = state.copyWith(isInitialized: false, errorMessage: null);
+    await initCamera(cameraIndex: nextIndex);
+  }
+
+  Future<void> setZoomLevel(double zoom) async {
+    if (_cameraController == null || !state.isInitialized) return;
+    final clamped = zoom.clamp(state.minZoomLevel, state.maxZoomLevel).toDouble();
+    try {
+      await _cameraController!.setZoomLevel(clamped);
+      if (mounted) state = state.copyWith(zoomLevel: clamped);
+    } catch (e) {
+      AppLogger.w('Zoom update failed: $e', _tag);
     }
   }
 
@@ -192,6 +265,7 @@ class ScannerController extends StateNotifier<ScannerState> {
       }
 
       await _cameraController!.setFlashMode(cameraFlash);
+      if (!mounted) return;
       state = state.copyWith(
         flashMode: nextMode,
         isFlashOn: nextMode != 'off',
@@ -205,7 +279,7 @@ class ScannerController extends StateNotifier<ScannerState> {
     if (_cameraController == null || !state.isInitialized || state.isExposureLocked) return;
     try {
       await _cameraController!.setExposureOffset(offset);
-      state = state.copyWith(exposureOffset: offset);
+      if (mounted) state = state.copyWith(exposureOffset: offset);
     } catch (_) {}
   }
 
@@ -256,6 +330,7 @@ class ScannerController extends StateNotifier<ScannerState> {
     final int score = eval['score'] as int? ?? 90;
     final bool isBlurry = eval['isBlurry'] as bool? ?? false;
 
+    if (!mounted) return;
     state = state.copyWith(
       aiQualityScore: score,
       isBlurDetected: isBlurry,
@@ -266,15 +341,18 @@ class ScannerController extends StateNotifier<ScannerState> {
   }
 
   Future<String?> capturePhoto() async {
-    state = state.copyWith(isCapturing: true);
+    if (state.isCapturing) return null;
+    state = state.copyWith(isCapturing: true, errorMessage: null);
     try {
       if (state.timerSeconds > 0) {
         await Future.delayed(Duration(seconds: state.timerSeconds));
+        if (!mounted) return null;
       }
 
       if (_cameraController != null && state.isInitialized) {
         final xFile = await _cameraController!.takePicture();
         await _evaluateAndSetQualityScore(xFile.path);
+        if (!mounted) return xFile.path;
         final updatedList = List<String>.from(state.capturedImages)..add(xFile.path);
         state = state.copyWith(capturedImages: updatedList, isCapturing: false);
         return xFile.path;
@@ -283,6 +361,7 @@ class ScannerController extends StateNotifier<ScannerState> {
         final xFile = await _imagePicker.pickImage(source: ImageSource.gallery);
         if (xFile != null) {
           await _evaluateAndSetQualityScore(xFile.path);
+          if (!mounted) return xFile.path;
           final updatedList = List<String>.from(state.capturedImages)..add(xFile.path);
           state = state.copyWith(capturedImages: updatedList, isCapturing: false);
           return xFile.path;
@@ -290,8 +369,9 @@ class ScannerController extends StateNotifier<ScannerState> {
       }
     } catch (e) {
       AppLogger.e('Photo capture failed: $e', tag: _tag);
-      state = state.copyWith(isCapturing: false, errorMessage: 'Failed to capture photo.');
+      if (mounted) state = state.copyWith(isCapturing: false, errorMessage: 'Failed to capture photo.');
     }
+    if (mounted) state = state.copyWith(isCapturing: false);
     return null;
   }
 
@@ -303,6 +383,7 @@ class ScannerController extends StateNotifier<ScannerState> {
         if (paths.isNotEmpty) {
           await _evaluateAndSetQualityScore(paths.first);
         }
+        if (!mounted) return;
         final updatedList = List<String>.from(state.capturedImages)..addAll(paths);
         state = state.copyWith(capturedImages: updatedList);
       }
@@ -312,6 +393,7 @@ class ScannerController extends StateNotifier<ScannerState> {
   }
 
   void removeImageAt(int index) {
+    if (index < 0 || index >= state.capturedImages.length) return;
     final updatedList = List<String>.from(state.capturedImages)..removeAt(index);
     state = state.copyWith(capturedImages: updatedList);
   }
