@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
-
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../core/utils/file_utils.dart';
 import '../../../../models/document_item.dart';
@@ -39,7 +40,7 @@ class DocumentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Dismissible(
       key: Key(document.id),
@@ -48,68 +49,97 @@ class DocumentCard extends StatelessWidget {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
-          color: colorScheme.error,
-          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(colors: [Color(0xFFFF5A78), Color(0xFFEF4444)]),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         ),
         child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 28),
       ),
       onDismissed: (_) => onDelete(),
       child: InkWell(
-        onTap: isSelectionMode
-            ? (onSelectionToggle ?? onTap)
-            : onTap,
+        onTap: isSelectionMode ? (onSelectionToggle ?? onTap) : onTap,
         onLongPress: onLongPress,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.all(16),
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: isSelected
-                ? colorScheme.primary.withOpacity(0.08)
-                : Theme.of(context).cardTheme.color,
-            borderRadius: BorderRadius.circular(16),
+            gradient: isDark
+                ? LinearGradient(
+                    colors: isSelected
+                        ? [const Color(0xFF242E5E), const Color(0xFF1A234A)]
+                        : [const Color(0xFF151D3F), const Color(0xFF121A36)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            color: isDark ? null : Colors.white,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
             border: Border.all(
               color: isSelected
-                  ? colorScheme.primary
-                  : Colors.grey.withOpacity(0.15),
-              width: isSelected ? 2.2 : 1.0,
+                  ? AppColors.primaryDark.withOpacity(0.6)
+                  : isDark
+                      ? Colors.white.withOpacity(0.07)
+                      : Colors.black.withOpacity(0.06),
+              width: isSelected ? 1.5 : 1,
             ),
+            boxShadow: isSelected
+                ? [BoxShadow(color: AppColors.primaryDark.withOpacity(0.25), blurRadius: 20, offset: const Offset(0, 8))]
+                : (isDark ? AppSpacing.cardShadowDark : AppSpacing.cardShadowLight),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Checkbox if Selection Mode
                   if (isSelectionMode) ...[
-                    IconButton(
-                      icon: Icon(
-                        isSelected
-                            ? Icons.check_circle_rounded
-                            : Icons.circle_outlined,
-                        color: isSelected ? colorScheme.primary : Colors.grey,
-                      ),
-                      onPressed: onSelectionToggle,
-                    ),
-                    const SizedBox(width: 4),
-                  ] else ...[
-                    Container(
-                      width: 52,
-                      height: 52,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.picture_as_pdf_rounded,
-                        color: colorScheme.primary,
-                        size: 28,
+                    GestureDetector(
+                      onTap: onSelectionToggle,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isSelected ? AppColors.primaryDark : Colors.transparent,
+                          border: Border.all(color: isSelected ? AppColors.primaryDark : Colors.white.withOpacity(0.22), width: 1.5),
+                          boxShadow: isSelected
+                              ? [BoxShadow(color: AppColors.primaryDark.withOpacity(0.4), blurRadius: 10)]
+                              : null,
+                        ),
+                        child: isSelected ? const Icon(Icons.check_rounded, color: Colors.white, size: 16) : null,
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                   ],
+                  // Thumbnail with gradient
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: isSelected ? AppColors.primaryGradient : AppColors.darkSurfaceGradient,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 3))],
+                    ),
+                    child: Stack(
+                      children: [
+                        Center(child: Icon(Icons.picture_as_pdf_rounded, color: isSelected ? Colors.white : AppColors.textSecondaryDark, size: 24)),
+                        if (document.isLocked)
+                          Positioned(
+                            right: 2,
+                            bottom: 2,
+                            child: Container(
+                              width: 14,
+                              height: 14,
+                              decoration: const BoxDecoration(color: Color(0xFFFFC857), shape: BoxShape.circle),
+                              child: const Icon(Icons.lock_rounded, size: 8, color: Colors.black),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,153 +151,112 @@ class DocumentCard extends StatelessWidget {
                                 document.title,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, fontSize: 14.5),
                               ),
                             ),
                             if (document.isLocked) ...[
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 6),
                               const SecureBadge(),
+                            ],
+                            if (document.aiSummary != null && document.aiSummary!.isNotEmpty) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  gradient: AppColors.aiGradient,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text('AI', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
+                              ),
                             ],
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 3),
                         Row(
                           children: [
                             Text(
                               DateFormatter.formatRelative(document.createdAt),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.6),
-                              ),
+                              style: TextStyle(fontSize: 11.5, color: AppColors.textSecondaryDark, fontWeight: FontWeight.w500),
                             ),
-                            const Text(' • '),
+                            Container(
+                              width: 3,
+                              height: 3,
+                              margin: const EdgeInsets.symmetric(horizontal: 6),
+                              decoration: BoxDecoration(color: AppColors.textSecondaryDark.withOpacity(0.5), shape: BoxShape.circle),
+                            ),
                             Text(
-                              '${document.pageCount} ${document.pageCount == 1 ? 'page' : 'pages'}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.6),
-                              ),
+                              '${document.pageCount} pgs',
+                              style: TextStyle(fontSize: 11.5, color: AppColors.textSecondaryDark),
                             ),
-                            const Text(' • '),
+                            Container(
+                              width: 3,
+                              height: 3,
+                              margin: const EdgeInsets.symmetric(horizontal: 6),
+                              decoration: BoxDecoration(color: AppColors.textSecondaryDark.withOpacity(0.5), shape: BoxShape.circle),
+                            ),
                             Text(
                               FileUtils.formatFileSize(document.fileSizeBytes),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.6),
-                              ),
+                              style: TextStyle(fontSize: 11.5, color: AppColors.textSecondaryDark),
                             ),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  if (!isSelectionMode)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            document.isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
-                            color: document.isFavorite ? Colors.amber : Colors.grey,
-                          ),
-                          onPressed: onFavoriteToggle,
+                  if (!isSelectionMode) ...[
+                    IconButton(
+                      icon: Icon(
+                        document.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
+                        color: document.isFavorite ? const Color(0xFFFFC857) : Colors.white.withOpacity(0.22),
+                        size: 20,
+                      ),
+                      onPressed: onFavoriteToggle,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    PopupMenuButton<String>(
+                      icon: Icon(Icons.more_horiz_rounded, size: 18, color: Colors.white.withOpacity(0.4)),
+                      color: const Color(0xFF1A2348),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: Colors.white.withOpacity(0.08))),
+                      onSelected: (action) {
+                        if (action == 'share') {
+                          Share.share('ScanX AI Document: ${document.title}\nPage count: ${document.pageCount}', subject: document.title);
+                        } else if (action == 'vault' && onToggleLock != null) {
+                          onToggleLock!();
+                        } else if (action == 'archive' && onToggleArchive != null) {
+                          onToggleArchive!();
+                        } else if (action == 'delete') {
+                          onDelete();
+                        }
+                      },
+                      itemBuilder: (ctx) => [
+                        const PopupMenuItem(value: 'share', child: Row(children: [Icon(Icons.share_rounded, size: 18, color: Colors.white70), SizedBox(width: 10), Text('Share', style: TextStyle(color: Colors.white)) ])),
+                        PopupMenuItem(
+                          value: 'vault',
+                          child: Row(children: [Icon(document.isLocked ? Icons.lock_open_rounded : Icons.lock_person_rounded, size: 18, color: AppColors.neonPurple), const SizedBox(width: 10), Text(document.isLocked ? 'Unhide' : 'Hide in Vault', style: const TextStyle(color: Colors.white)) ]),
                         ),
-                        PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert_rounded),
-                          onSelected: (action) {
-                            if (action == 'share') {
-                              Share.share(
-                                'ScanX AI Document: ${document.title}\nPage count: ${document.pageCount}',
-                                subject: document.title,
-                              );
-                            } else if (action == 'vault' && onToggleLock != null) {
-                              onToggleLock!();
-                            } else if (action == 'archive' && onToggleArchive != null) {
-                              onToggleArchive!();
-                            } else if (action == 'delete') {
-                              onDelete();
-                            }
-                          },
-                          itemBuilder: (ctx) => [
-                            const PopupMenuItem(
-                              value: 'share',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.share_rounded, size: 18),
-                                  SizedBox(width: 8),
-                                  Text('Share Document'),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem(
-                              value: 'vault',
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    document.isLocked ? Icons.lock_open_rounded : Icons.lock_person_rounded,
-                                    size: 18,
-                                    color: const Color(0xFF8B5CF6),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    document.isLocked ? 'Remove from Hidden Vault' : 'Move to Hidden Vault',
-                                    style: const TextStyle(color: Color(0xFF8B5CF6)),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem(
-                              value: 'archive',
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    document.isArchived ? Icons.unarchive_rounded : Icons.archive_rounded,
-                                    size: 18,
-                                    color: const Color(0xFFF59E0B),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(document.isArchived ? 'Unarchive Document' : 'Archive Document'),
-                                ],
-                              ),
-                            ),
-                            const PopupMenuItem(
-                              value: 'delete',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
-                                  SizedBox(width: 8),
-                                  Text('Move to Trash', style: TextStyle(color: Colors.red)),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                        const PopupMenuItem(value: 'archive', child: Row(children: [Icon(Icons.archive_rounded, size: 18, color: Color(0xFFFFC857)), SizedBox(width: 10), Text('Archive', style: TextStyle(color: Colors.white)) ])),
+                        const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent), SizedBox(width: 10), Text('Move to Trash', style: TextStyle(color: Colors.redAccent)) ])),
                       ],
                     ),
+                  ],
                 ],
               ),
               if (document.tags.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Wrap(
                   spacing: 6,
                   runSpacing: 4,
-                  children: document.tags.map((t) {
+                  children: document.tags.take(4).map((t) {
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: colorScheme.primary.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(6),
+                        color: AppColors.primaryDark.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.primaryDark.withOpacity(0.22)),
                       ),
                       child: Text(
                         t.startsWith('#') ? t : '#$t',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.primary,
-                        ),
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF9BA3FF)),
                       ),
                     );
                   }).toList(),
@@ -278,21 +267,16 @@ class DocumentCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.amber.withOpacity(0.12),
+                    color: const Color(0xFFFFC857).withOpacity(0.10),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.amber.withOpacity(0.35)),
+                    border: Border.all(color: const Color(0xFFFFC857).withOpacity(0.18)),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.saved_search_rounded, color: Colors.amber, size: 18),
+                      const Icon(Icons.saved_search_rounded, color: Color(0xFFFFC857), size: 16),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text(
-                          matchingSnippet!,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
-                        ),
+                        child: Text(matchingSnippet!, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic, color: Color(0xFFE8DCC0))),
                       ),
                     ],
                   ),
@@ -300,21 +284,22 @@ class DocumentCard extends StatelessWidget {
               ] else if (document.aiSummary != null && document.aiSummary!.isNotEmpty) ...[
                 const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
-                    color: colorScheme.secondary.withOpacity(0.08),
+                    color: AppColors.neonPurple.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.neonPurple.withOpacity(0.15)),
                   ),
                   child: Row(
                     children: [
-                      const AIBadge(label: 'AI Summary'),
+                      const AIBadge(label: 'AI'),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           document.aiSummary!,
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12),
+                          style: const TextStyle(fontSize: 11.5, color: Color(0xFFB8B5D0)),
                         ),
                       ),
                     ],

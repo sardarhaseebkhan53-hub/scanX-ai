@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../services/monetization/ad_service.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../../widgets/ai_badge.dart';
 import '../controllers/ai_controller.dart';
 
 class AIAssistantScreen extends ConsumerStatefulWidget {
   final String? documentId;
-
   const AIAssistantScreen({super.key, this.documentId});
 
   @override
@@ -31,457 +31,239 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
     _chatController.clear();
   }
 
-  void _showRewardedAdForFreeAI() {
-    AdService().showRewardedAd(
-      onEarnedReward: (reward) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '🎉 Earned ${reward.amount} Free AI Analysis Pass! You can now run unlimited queries.',
-              ),
-            ),
-          );
-        }
-      },
-      onAdClosed: () {},
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(aiProvider(widget.documentId));
     final controller = ref.read(aiProvider(widget.documentId).notifier);
-    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
+      backgroundColor: AppColors.backgroundDark,
       appBar: CustomAppBar(
-        title: state.document?.title ?? 'AI Assistant',
+        title: state.document?.title ?? 'AI Studio',
+        subtitle: 'GPT-4o • Gemini • Offline OCR',
         actions: [
-          IconButton(
-            icon: const Icon(Icons.card_giftcard_rounded, color: Colors.orange),
-            tooltip: 'Earn 1 Free AI Pass (Watch Ad)',
-            onPressed: _showRewardedAdForFreeAI,
+          Container(
+            width: 36,
+            height: 36,
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), shape: BoxShape.circle, border: Border.all(color: Colors.white.withOpacity(0.08))),
+            child: IconButton(icon: const Icon(Icons.auto_awesome_rounded, size: 18, color: Colors.white70), onPressed: () => controller.runAnalysis('summary')),
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Regenerate Summary',
-            onPressed: () => controller.runAnalysis('summary'),
-          ),
-          const SizedBox(width: 8),
         ],
       ),
-      body: state.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                // 1. Greeting Header
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Good Morning, John 🖐️',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'How can I help you today?',
-                            style: TextStyle(
-                              color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const AIBadge(label: 'GPT-4o / Gemini'),
-                    ],
-                  ),
+      body: Stack(
+        children: [
+          Positioned(top: -80, left: -40, child: Container(width: 260, height: 260, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [AppColors.neonPurple.withOpacity(0.14), Colors.transparent])))),
+          Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+                child: Row(
+                  children: [
+                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Text('ScanX AI Intelligence', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
+                      const SizedBox(height: 2),
+                      Text('Ask, summarize, translate, audit', style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 12.5)),
+                    ]),
+                    const Spacer(),
+                    const AIBadge(label: 'GPT-4o + Gemini'),
+                  ],
                 ),
-
-                // 2. 8 Premium Colorful Action Grid Cards (4 columns x 2 rows or 3 columns)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: GridView.count(
-                    crossAxisCount: 4,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                    childAspectRatio: 0.95,
-                    children: [
-                      _buildActionGridCard(
-                        title: 'Summarize',
-                        subtitle: 'Get summary',
-                        icon: Icons.article_outlined,
-                        color: const Color(0xFF06B6D4), // Cyan
-                        onTap: () => controller.runAnalysis('summary'),
-                      ),
-                      _buildActionGridCard(
-                        title: 'Chat PDF',
-                        subtitle: 'Ask anything',
-                        icon: Icons.chat_bubble_outline_rounded,
-                        color: const Color(0xFF8B5CF6), // Purple
-                        onTap: () {
-                          controller.sendChatMessage('Provide a comprehensive breakdown of all clauses in this document.');
-                        },
-                      ),
-                      _buildActionGridCard(
-                        title: 'Translate',
-                        subtitle: 'Translate text',
-                        icon: Icons.translate_rounded,
-                        color: const Color(0xFFEF4444), // Red/Orange
-                        onTap: () => controller.runAnalysis('translate'),
-                      ),
-                      _buildActionGridCard(
-                        title: 'Explain',
-                        subtitle: 'Explain terms',
-                        icon: Icons.lightbulb_outline_rounded,
-                        color: const Color(0xFF3B82F6), // Blue
-                        onTap: () => controller.runAnalysis('explain'),
-                      ),
-                      _buildActionGridCard(
-                        title: 'Re-write',
-                        subtitle: 'Polish writing',
-                        icon: Icons.auto_fix_high_rounded,
-                        color: const Color(0xFF10B981), // Green
-                        onTap: () => controller.runAnalysis('rewrite'),
-                      ),
-                      _buildActionGridCard(
-                        title: 'Extract Card',
-                        subtitle: 'Contact info',
-                        icon: Icons.table_chart_outlined,
-                        color: const Color(0xFFEC4899), // Pink
-                        onTap: () => controller.runAnalysis('business_card'),
-                      ),
-                      _buildActionGridCard(
-                        title: 'Risk Audit',
-                        subtitle: 'Check liability',
-                        icon: Icons.security_rounded,
-                        color: const Color(0xFFF59E0B), // Amber
-                        onTap: () => controller.runAnalysis('audit_risks'),
-                      ),
-                      _buildActionGridCard(
-                        title: 'Tasks',
-                        subtitle: 'Action items',
-                        icon: Icons.checklist_rounded,
-                        color: const Color(0xFF10B981), // Green
-                        onTap: () => controller.runAnalysis('action_items'),
-                      ),
-                    ],
-                  ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: GridView.count(
+                  crossAxisCount: 4,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 0.90,
+                  children: [
+                    _ActionCard(title: 'Summary', icon: Icons.summarize_rounded, gradient: AppColors.scannerGradient, onTap: () => controller.runAnalysis('summary')),
+                    _ActionCard(title: 'Chat PDF', icon: Icons.chat_bubble_rounded, gradient: AppColors.purpleGradient, onTap: () => controller.sendChatMessage('Provide comprehensive breakdown of clauses')),
+                    _ActionCard(title: 'Translate', icon: Icons.translate_rounded, gradient: AppColors.cyanGradient, onTap: () => controller.runAnalysis('translate')),
+                    _ActionCard(title: 'Explain', icon: Icons.lightbulb_rounded, gradient: AppColors.primaryGradient, onTap: () => controller.runAnalysis('explain')),
+                    _ActionCard(title: 'Re-write', icon: Icons.auto_fix_high_rounded, gradient: AppColors.emeraldGradient, onTap: () => controller.runAnalysis('rewrite')),
+                    _ActionCard(title: 'Extract', icon: Icons.contact_page_rounded, gradient: AppColors.aiGradient, onTap: () => controller.runAnalysis('business_card')),
+                    _ActionCard(title: 'Risk Audit', icon: Icons.security_rounded, gradient: AppColors.goldGradient, onTap: () => controller.runAnalysis('audit_risks')),
+                    _ActionCard(title: 'Tasks', icon: Icons.checklist_rounded, gradient: AppColors.emeraldGradient, onTap: () => controller.runAnalysis('action_items')),
+                  ],
                 ),
-
-                // 3. Main Analysis Output Card & Semantic Keyword Tags
-                if (state.analysisResult?.summary != null ||
-                    state.analysisResult?.explanation != null ||
-                    state.analysisResult?.rewrittenText != null ||
-                    (state.analysisResult?.items.isNotEmpty == true &&
-                        state.analysisResult?.vendorName == 'Sardar Haseeb Technologies'))
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            AIBadge(
-                              label: state.analysisResult?.rewrittenText != null
-                                  ? 'Executive Rewrite'
-                                  : (state.analysisResult?.items.isNotEmpty == true &&
-                                          state.analysisResult?.vendorName ==
-                                              'Sardar Haseeb Technologies')
-                                      ? 'Extracted Contact Card'
-                                      : 'AI Analysis Result',
-                            ),
-                            if (state.suggestedFolderName != null)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  'Folder: ${state.suggestedFolderName}',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.green,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
+              ),
+              if (state.analysisResult?.summary != null || state.analysisResult?.explanation != null)
+                Container(
+                  margin: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xFF1A2348), Color(0xFF151D3F)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                    border: Border.all(color: AppColors.neonPurple.withOpacity(0.18)),
+                    boxShadow: [BoxShadow(color: AppColors.neonPurple.withOpacity(0.12), blurRadius: 20, offset: const Offset(0, 8))],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        const AIBadge(label: 'AI Result', compact: false),
+                        const Spacer(),
+                        if (state.suggestedFolderName != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(color: AppColors.success.withOpacity(0.15), borderRadius: BorderRadius.circular(20), border: Border.all(color: AppColors.success.withOpacity(0.25))),
+                            child: Text('Folder: ${state.suggestedFolderName}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.success)),
+                          ),
+                      ]),
+                      const SizedBox(height: 12),
+                      Text(state.analysisResult?.summary ?? state.analysisResult?.explanation ?? '', style: const TextStyle(color: Color(0xFFE0E6FF), fontSize: 13.5, height: 1.6)),
+                      if (state.autoTags.isNotEmpty) ...[
                         const SizedBox(height: 12),
-                        if (state.analysisResult?.items.isNotEmpty == true &&
-                            state.analysisResult?.vendorName == 'Sardar Haseeb Technologies') ...[
-                          for (final item in state.analysisResult!.items)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Row(
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: state.autoTags.map((tag) => Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: AppColors.primaryDark.withOpacity(0.15), borderRadius: BorderRadius.circular(20), border: Border.all(color: AppColors.primaryDark.withOpacity(0.25))), child: Text(tag, style: const TextStyle(fontSize: 10, color: Color(0xFF9BA3FF), fontWeight: FontWeight.w700)))).toList(),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              Expanded(
+                child: state.chatMessages.isEmpty
+                    ? ListView(
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                        children: [
+                          Text('Recent Conversations', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 12),
+                          _ConvRow(title: 'Summarize Invoice.pdf', time: 'Today, 10:30 AM', icon: Icons.article_rounded, gradient: AppColors.scannerGradient),
+                          _ConvRow(title: 'Explain Contract Terms', time: 'Yesterday, 4:20 PM', icon: Icons.lightbulb_rounded, gradient: AppColors.goldGradient),
+                          _ConvRow(title: 'Translate Document', time: '12 May, 9:15 AM', icon: Icons.translate_rounded, gradient: AppColors.cyanGradient),
+                        ],
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(20),
+                        itemCount: state.chatMessages.length,
+                        itemBuilder: (context, index) {
+                          final msg = state.chatMessages[index];
+                          final isUser = msg['role'] == 'user';
+                          return Align(
+                            alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 14),
+                              padding: const EdgeInsets.all(14),
+                              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.80),
+                              decoration: BoxDecoration(
+                                gradient: isUser ? AppColors.scannerGradient : const LinearGradient(colors: [Color(0xFF151D3F), Color(0xFF121A36)]),
+                                borderRadius: BorderRadius.circular(18).copyWith(bottomRight: isUser ? const Radius.circular(4) : null, bottomLeft: !isUser ? const Radius.circular(4) : null),
+                                border: Border.all(color: isUser ? Colors.white.withOpacity(0.12) : Colors.white.withOpacity(0.08)),
+                                boxShadow: isUser ? [BoxShadow(color: AppColors.primaryDark.withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 6))] : null,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    '${item['description']}: ',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold, fontSize: 13),
-                                  ),
-                                  Expanded(
-                                    child: Text(
-                                      item['value']?.toString() ?? '',
-                                      style: const TextStyle(fontSize: 13),
-                                    ),
-                                  ),
+                                  if (!isUser) ...[const AIBadge(label: 'ScanX AI'), const SizedBox(height: 8)],
+                                  Text(msg['content'] ?? '', style: TextStyle(color: isUser ? Colors.white : const Color(0xFFE0E6FF), fontSize: 13.5, height: 1.5)),
                                 ],
                               ),
-                            )
-                        ] else
-                          Text(
-                            state.analysisResult?.summary ??
-                                state.analysisResult?.explanation ??
-                                state.analysisResult?.rewrittenText ??
-                                '',
-                            style: const TextStyle(fontSize: 14, height: 1.5),
-                          ),
-                        if (state.autoTags.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 4,
-                            children: state.autoTags.map((tag) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: colorScheme.primary.withOpacity(0.14),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  tag,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: colorScheme.primary,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-
-                // 4. "Recent Conversations" Section & Chat Messages ListView
-                Expanded(
-                  child: state.chatMessages.isEmpty
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Padding(
-                              padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
-                              child: Text(
-                                'Recent Conversations',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
                             ),
-                            _buildConversationRow('Summarize Invoice.pdf', 'Today, 10:30 AM', Icons.article_outlined),
-                            _buildConversationRow('Explain Contract Terms', 'Yesterday, 4:20 PM', Icons.lightbulb_outline_rounded),
-                            _buildConversationRow('Translate Document', '12 May, 9:15 AM', Icons.translate_rounded),
-                          ],
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: state.chatMessages.length,
-                          itemBuilder: (context, index) {
-                            final msg = state.chatMessages[index];
-                            final isUser = msg['role'] == 'user';
-                            return Align(
-                              alignment:
-                                  isUser ? Alignment.centerRight : Alignment.centerLeft,
-                              child: Container(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                padding: const EdgeInsets.all(14),
-                                constraints: BoxConstraints(
-                                  maxWidth: MediaQuery.of(context).size.width * 0.78,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isUser
-                                      ? colorScheme.primary
-                                      : Theme.of(context).cardTheme.color,
-                                  borderRadius: BorderRadius.circular(16).copyWith(
-                                    bottomRight: isUser ? const Radius.circular(0) : null,
-                                    bottomLeft: !isUser ? const Radius.circular(0) : null,
-                                  ),
-                                  border: isUser
-                                      ? null
-                                      : Border.all(color: Colors.grey.withOpacity(0.2)),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (!isUser) ...[
-                                      const AIBadge(label: 'ScanX AI'),
-                                      const SizedBox(height: 6),
-                                    ],
-                                    Text(
-                                      msg['content'] ?? '',
-                                      style: TextStyle(
-                                        color: isUser ? Colors.white : null,
-                                        fontSize: 14,
-                                        height: 1.4,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-
-                if (state.isAnalyzing)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: CircularProgressIndicator(),
+                          );
+                        },
+                      ),
+              ),
+              if (state.isAnalyzing) Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryDark))),
+              SafeArea(
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF151D3F),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+                    border: Border.all(color: Colors.white.withOpacity(0.08)),
+                    boxShadow: AppSpacing.cardShadowDark,
                   ),
-
-                // 5. Bottom Chat Bar
-                SafeArea(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).cardTheme.color,
-                      border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _chatController,
-                            onSubmitted: (_) => _sendMessage(),
-                            decoration: const InputDecoration(
-                              hintText: 'Ask AI about this document...',
-                              border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                            ),
-                          ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), shape: BoxShape.circle, border: Border.all(color: Colors.white.withOpacity(0.08))),
+                        child: const Icon(Icons.add_rounded, color: Colors.white70, size: 20),
+                      ),
+                      Expanded(child: TextField(controller: _chatController, onSubmitted: (_) => _sendMessage(), style: const TextStyle(color: Colors.white, fontSize: 14), decoration: InputDecoration(hintText: 'Ask AI about this document...', hintStyle: TextStyle(color: AppColors.textSecondaryDark, fontSize: 13), border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(horizontal: 14)))),
+                      GestureDetector(
+                        onTap: _sendMessage,
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(gradient: AppColors.scannerGradient, shape: BoxShape.circle, boxShadow: [BoxShadow(color: AppColors.primaryDark.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))]),
+                          child: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 20),
                         ),
-                        IconButton(
-                          onPressed: _sendMessage,
-                          icon: Icon(Icons.send_rounded, color: colorScheme.primary),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
+}
 
-  Widget _buildActionGridCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
+class _ActionCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Gradient gradient;
+  final VoidCallback onTap;
+  const _ActionCard({required this.title, required this.icon, required this.gradient, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
       child: Container(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardTheme.color,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.withOpacity(0.18)),
+          gradient: const LinearGradient(colors: [Color(0xFF151D3F), Color(0xFF121A36)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.06)),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: color, size: 18),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
-                  ),
-                ),
-              ],
-            ),
+            Container(width: 32, height: 32, decoration: BoxDecoration(gradient: gradient, borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: Colors.white, size: 16)),
+            Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildConversationRow(String title, String time, IconData icon) {
-    final colorScheme = Theme.of(context).colorScheme;
+class _ConvRow extends StatelessWidget {
+  final String title, time;
+  final IconData icon;
+  final Gradient gradient;
+  const _ConvRow({required this.title, required this.time, required this.icon, required this.gradient});
 
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: colorScheme.primary.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(icon, color: colorScheme.primary, size: 22),
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
       ),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+      child: Row(
+        children: [
+          Container(width: 38, height: 38, decoration: BoxDecoration(gradient: gradient, borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: Colors.white, size: 18)),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)), const SizedBox(height: 2), Text(time, style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 11))])),
+          Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.textSecondaryDark),
+        ],
       ),
-      subtitle: Text(
-        time,
-        style: TextStyle(
-          fontSize: 12,
-          color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
-        ),
-      ),
-      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Loaded conversation: "$title"')),
-        );
-      },
     );
   }
 }
