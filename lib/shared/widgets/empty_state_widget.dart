@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
 
 class EmptyStateWidget extends StatelessWidget {
   final String title;
@@ -18,50 +20,71 @@ class EmptyStateWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
+        padding: const EdgeInsets.symmetric(horizontal: 28),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              width: 92,
+              height: 92,
               decoration: BoxDecoration(
-                color: colorScheme.primary.withOpacity(0.08),
+                gradient: const LinearGradient(colors: [Color(0xFF1E2750), Color(0xFF151D3F)]),
                 shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+                boxShadow: [
+                  BoxShadow(color: AppColors.primaryDark.withOpacity(0.20), blurRadius: 30, offset: const Offset(0, 10)),
+                ],
               ),
-              child: Icon(
-                icon,
-                size: 64,
-                color: colorScheme.primary,
+              child: Stack(
+                children: [
+                  Center(child: Icon(icon, size: 38, color: AppColors.textSecondaryDark)),
+                  Center(
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(colors: [AppColors.primaryDark.withOpacity(0.15), Colors.transparent]),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 22),
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800, fontSize: 18),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
               subtitle,
-              style: TextStyle(
-                fontSize: 14,
-                color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
-                height: 1.5,
-              ),
+              style: TextStyle(fontSize: 13.5, color: AppColors.textSecondaryDark, height: 1.5),
               textAlign: TextAlign.center,
             ),
             if (buttonText != null && onButtonPressed != null) ...[
-              const SizedBox(height: 28),
-              ElevatedButton.icon(
-                onPressed: onButtonPressed,
-                icon: const Icon(Icons.add_a_photo_rounded),
-                label: Text(buttonText!),
+              const SizedBox(height: 26),
+              GestureDetector(
+                onTap: onButtonPressed,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.scannerGradient,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+                    boxShadow: [BoxShadow(color: AppColors.primaryDark.withOpacity(0.35), blurRadius: 18, offset: const Offset(0, 6))],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 18),
+                      const SizedBox(width: 8),
+                      Text(buttonText!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+                    ],
+                  ),
+                ),
               ),
             ],
           ],

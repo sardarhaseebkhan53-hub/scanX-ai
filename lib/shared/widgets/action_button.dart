@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 
-/// Quick-action card used in the Home 2x2 grid (Scan / Import / QR / AI) and
-/// similar dashboards. Fully responsive: no fixed height, sizes itself from
-/// its GridView's aspect ratio and never overflows since text is wrapped in
-/// Flexible + maxLines/ellipsis.
+/// Quick-action luxury card used in Home dashboard 2x2 grid
 class ActionButton extends StatefulWidget {
   final String label;
   final String subtitle;
@@ -30,8 +28,8 @@ class _ActionButtonState extends State<ActionButton> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
@@ -40,46 +38,76 @@ class _ActionButtonState extends State<ActionButton> {
       onTap: widget.onTap,
       child: AnimatedScale(
         scale: _pressed ? 0.96 : 1.0,
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOut,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
         child: Container(
-          padding: const EdgeInsets.all(AppSpacing.lg),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: theme.cardTheme.color,
             borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+            gradient: isDark
+                ? LinearGradient(
+                    colors: [
+                      _pressed ? const Color(0xFF202A55) : const Color(0xFF171F44),
+                      _pressed ? const Color(0xFF1A234A) : const Color(0xFF121A38),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            color: isDark ? null : theme.cardTheme.color,
             border: Border.all(
-              color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.withOpacity(0.14),
+              color: _pressed ? AppColors.primaryDark.withOpacity(0.6) : Colors.white.withOpacity(0.07),
+              width: 1.2,
             ),
-            boxShadow: isDark ? AppSpacing.cardShadowDark : AppSpacing.cardShadowLight,
+            boxShadow: _pressed
+                ? [
+                    BoxShadow(color: widget.gradient.colors.first.withOpacity(0.35), blurRadius: 22, offset: const Offset(0, 10)),
+                  ]
+                : AppSpacing.cardShadowDark,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  gradient: widget.gradient,
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                ),
-                child: Icon(widget.icon, color: Colors.white, size: 22),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: widget.gradient,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(color: widget.gradient.colors.first.withOpacity(0.4), blurRadius: 14, offset: const Offset(0, 6)),
+                      ],
+                    ),
+                    child: Center(child: Icon(widget.icon, color: Colors.white, size: 24)),
+                  ),
+                  Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.06),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                    ),
+                    child: Icon(Icons.arrow_outward_rounded, size: 14, color: Colors.white.withOpacity(0.7)),
+                  ),
+                ],
               ),
-              const SizedBox(height: AppSpacing.md),
+              const Spacer(),
               Text(
                 widget.label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleMedium,
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: -0.2),
               ),
               const SizedBox(height: 2),
               Text(
                 widget.subtitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
-                ),
+                style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textSecondaryDark, fontSize: 12),
               ),
             ],
           ),
