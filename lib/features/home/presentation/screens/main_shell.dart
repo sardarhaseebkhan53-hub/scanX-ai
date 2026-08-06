@@ -28,26 +28,51 @@ class MainShell extends ConsumerStatefulWidget {
 class _MainShellState extends ConsumerState<MainShell> {
   int _tab = 0;
   String? _docsFilter;
-  final ScrollController _scrollController = ScrollController();
+  // Each scrollable tab owns its own controller. A single ScrollController must
+  // never be attached to two scroll views at once — both tabs are kept mounted
+  // simultaneously inside the IndexedStack, so sharing one controller throws
+  // "ScrollController attached to multiple scroll views".
+  final ScrollController _homeScrollController = ScrollController();
+  final ScrollController _docsScrollController = ScrollController();
   bool _isBotVisible = true;
   double _lastScrollOffset = 0;
 
-  void _goto(int tab) => setState(() => _tab = tab);
+  ScrollController get _activeScrollController =>
+      _tab == 0 ? _homeScrollController : _docsScrollController;
+
+  void _goto(int tab) {
+    if (tab == _tab) return;
+    // Move the floating-bot auto-hide listener to the newly active scroll view.
+    _homeScrollController.removeListener(_onScroll);
+    _docsScrollController.removeListener(_onScroll);
+    setState(() => _tab = tab);
+    _attachActiveListener();
+  }
+
+  void _attachActiveListener() {
+    _activeScrollController.addListener(_onScroll);
+    _lastScrollOffset =
+        _activeScrollController.hasClients ? _activeScrollController.offset : 0.0;
+  }
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
+    _attachActiveListener();
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _homeScrollController.removeListener(_onScroll);
+    _docsScrollController.removeListener(_onScroll);
+    _homeScrollController.dispose();
+    _docsScrollController.dispose();
     super.dispose();
   }
 
   void _onScroll() {
-    final current = _scrollController.offset;
+    final current =
+        _activeScrollController.hasClients ? _activeScrollController.offset : 0.0;
     final delta = current - _lastScrollOffset;
     if (delta > 10 && _isBotVisible) {
       setState(() => _isBotVisible = false);
@@ -80,20 +105,23 @@ class _MainShellState extends ConsumerState<MainShell> {
             index: _tab,
             children: [
               HomeScreen(
-                scrollController: _scrollController,
+                scrollController: _homeScrollController,
                 onSeeAllDocs: () => _goto(1),
                 onSeeAllTools: () => _goto(2),
                 onOpenCategory: (category) {
+                  _homeScrollController.removeListener(_onScroll);
+                  _docsScrollController.removeListener(_onScroll);
                   setState(() {
                     _docsFilter = category;
                     _tab = 1;
                   });
+                  _attachActiveListener();
                 },
               ),
               AllDocumentsScreen(
                 key: ValueKey(_docsFilter ?? 'all'),
                 initialFilter: _docsFilter,
-                scrollController: _scrollController,
+                scrollController: _docsScrollController,
               ),
               const AiToolsScreen(),
               const ProfileScreen(),

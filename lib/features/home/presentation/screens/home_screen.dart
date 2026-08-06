@@ -1196,7 +1196,7 @@ class _RobotIllustration extends StatelessWidget {
         return FittedBox(
           fit: BoxFit.contain,
           child: SizedBox(
-            height: 152,
+            height: 164,
             width: 152,
             child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
               Positioned(
