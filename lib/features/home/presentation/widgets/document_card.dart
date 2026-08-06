@@ -172,7 +172,8 @@ class DocumentCard extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 3),
-                        Row(
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Text(
                               DateFormatter.formatRelative(document.createdAt),

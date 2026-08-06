@@ -26,7 +26,7 @@ class AiToolsScreen extends ConsumerWidget {
       body: SafeArea(
         bottom: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 110),
+          padding: EdgeInsets.fromLTRB(20, 14, 20, 160 + MediaQuery.of(context).padding.bottom),
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,

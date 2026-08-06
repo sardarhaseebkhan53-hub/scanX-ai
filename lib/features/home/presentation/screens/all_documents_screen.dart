@@ -149,31 +149,35 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
               padding: const EdgeInsets.fromLTRB(20, 6, 20, 8),
               child: AppSearchBar(onChanged: controller.setSearchQuery, onFilterTap: () => _showSortModal(controller, st.sortBy)),
             ),
-            SizedBox(
-              height: 40,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: _filters.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (context, i) {
-                  final f = _filters[i];
-                  final sel = f == _filter;
-                  return GestureDetector(
-                    onTap: () => _setFilter(f),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                      decoration: BoxDecoration(
-                        gradient: sel ? AppColors.brandGradient : null,
-                        color: sel ? null : Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: sel ? Colors.transparent : Colors.white.withOpacity(0.09)),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: _filters.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final f = entry.value;
+                    final sel = f == _filter;
+                    return Padding(
+                      padding: EdgeInsets.only(right: i == _filters.length - 1 ? 0 : 8.0),
+                      child: GestureDetector(
+                        onTap: () => _setFilter(f),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                          decoration: BoxDecoration(
+                            gradient: sel ? AppColors.brandGradient : null,
+                            color: sel ? null : Colors.white.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: sel ? Colors.transparent : Colors.white.withOpacity(0.09)),
+                          ),
+                          child: Center(child: Text(f, style: TextStyle(color: sel ? Colors.white : AppColors.textSecondaryDark, fontSize: 11.5, fontWeight: FontWeight.w700))),
+                        ),
                       ),
-                      child: Text(f, style: TextStyle(color: sel ? Colors.white : AppColors.textSecondaryDark, fontSize: 11.5, fontWeight: FontWeight.w700)),
-                    ),
-                  );
-                },
+                    );
+                  }).toList(),
+                ),
               ),
             ),
             const SizedBox(height: 6),
@@ -192,22 +196,27 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
                           child: Text('Folders', style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
                         ),
                       ),
-                      SliverToBoxAdapter(
-                        child: SizedBox(
-                          height: st.folders.isEmpty ? 0 : 112,
-                          child: ListView.separated(
+                      if (st.folders.isNotEmpty)
+                        SliverToBoxAdapter(
+                          child: SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                            itemCount: st.folders.length,
-                            separatorBuilder: (_, __) => const SizedBox(width: 12),
-                            itemBuilder: (context, index) {
-                              final folder = st.folders[index];
-                              final count = st.documents.where((d) => d.folderId == folder.id).length;
-                              return FolderCard(folder: folder, itemCount: count, onTap: () => controller.selectFolder(folder.id));
-                            },
+                            child: IntrinsicHeight(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: st.folders.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  final folder = entry.value;
+                                  final count = st.documents.where((d) => d.folderId == folder.id).length;
+                                  return Padding(
+                                    padding: EdgeInsets.only(right: index == st.folders.length - 1 ? 0 : 12.0),
+                                    child: FolderCard(folder: folder, itemCount: count, onTap: () => controller.selectFolder(folder.id)),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
                     ],
                     if (st.isLoading)
                       const SliverToBoxAdapter(child: SkeletonLoader())
@@ -273,7 +282,7 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
                           ),
                         ),
                       ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 110)),
+                    SliverToBoxAdapter(child: SafeArea(top: false, child: SizedBox(height: 160))),
                   ],
                 ),
               ),
