@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../config/routes/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../ai/presentation/screens/ai_tools_screen.dart';
 import '../../../settings/presentation/controllers/settings_controller.dart';
 import '../../../settings/presentation/screens/profile_screen.dart';
@@ -14,6 +16,8 @@ import 'home_screen.dart';
 
 /// Root shell — dark glass bottom bar with Home • Documents • [Scan] • AI Tools • Profile
 /// plus floating AI assistant robot at bottom-right.
+/// Enhanced: floating button respects SafeArea, auto-hides while scrolling,
+/// snaps to screen edges with smooth glassmorphism animation.
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
 
@@ -24,8 +28,34 @@ class MainShell extends ConsumerStatefulWidget {
 class _MainShellState extends ConsumerState<MainShell> {
   int _tab = 0;
   String? _docsFilter;
+  final ScrollController _scrollController = ScrollController();
+  bool _isBotVisible = true;
+  double _lastScrollOffset = 0;
 
   void _goto(int tab) => setState(() => _tab = tab);
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final current = _scrollController.offset;
+    final delta = current - _lastScrollOffset;
+    if (delta > 10 && _isBotVisible) {
+      setState(() => _isBotVisible = false);
+    } else if (delta < -5 && !_isBotVisible) {
+      setState(() => _isBotVisible = true);
+    }
+    _lastScrollOffset = current;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,19 +66,21 @@ class _MainShellState extends ConsumerState<MainShell> {
       });
     }
 
-    // Calculate safe bottom offset so FAB + bottom bar don't overlap content.
     final mq = MediaQuery.of(context);
     final bottomPadding = mq.padding.bottom;
+    final safeAreaBottom = bottomPadding + 80; // space above bottom nav + fab
 
     return Scaffold(
       extendBody: true,
       backgroundColor: const Color(0xFF070A1E),
       body: Stack(
         children: [
+          // Main content with scroll controller passed to scrollable pages
           IndexedStack(
             index: _tab,
             children: [
               HomeScreen(
+                scrollController: _scrollController,
                 onSeeAllDocs: () => _goto(1),
                 onSeeAllTools: () => _goto(2),
                 onOpenCategory: (category) {
@@ -58,16 +90,33 @@ class _MainShellState extends ConsumerState<MainShell> {
                   });
                 },
               ),
-              AllDocumentsScreen(key: ValueKey(_docsFilter ?? 'all'), initialFilter: _docsFilter),
+              AllDocumentsScreen(
+                key: ValueKey(_docsFilter ?? 'all'),
+                initialFilter: _docsFilter,
+                scrollController: _scrollController,
+              ),
               const AiToolsScreen(),
               const ProfileScreen(),
             ],
           ),
-          // floating AI assistant bot button — bottom right
+          // Floating AI assistant bot button — enhanced
+          // Auto-hides while scrolling, smooth slide + fade, snaps to safe bottom-right
           Positioned(
-            right: 12,
-            bottom: 92 + bottomPadding,
-            child: _FloatingBotButton(onTap: () => context.push(RouteNames.aiAssistant)),
+            right: 16,
+            bottom: safeAreaBottom,
+            child: AnimatedSlide(
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeInOutCubic,
+              offset: Offset(0, _isBotVisible ? 0 : 1.2),
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                opacity: _isBotVisible ? 1.0 : 0.0,
+                child: _FloatingBotButton(
+                  onTap: () => context.push(RouteNames.aiAssistant),
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -79,7 +128,7 @@ class _MainShellState extends ConsumerState<MainShell> {
 }
 
 // ---------------------------------------------------------------------------
-// Center Scan Floating Action
+// Center Scan Floating Action — refined with smoother pulse
 // ---------------------------------------------------------------------------
 
 class _ScanFab extends StatefulWidget {
@@ -94,7 +143,10 @@ class _ScanFabState extends State<_ScanFab> with SingleTickerProviderStateMixin 
   @override
   void initState() {
     super.initState();
-    _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))..repeat();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    )..repeat(reverse: true);
   }
 
   @override
@@ -105,75 +157,116 @@ class _ScanFabState extends State<_ScanFab> with SingleTickerProviderStateMixin 
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        AnimatedBuilder(
-          animation: _pulse,
-          builder: (context, _) {
-            final v = _pulse.value;
-            return Stack(alignment: Alignment.center, children: [
-              Container(
-                width: 78 + 18 * v,
-                height: 78 + 18 * v,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF8B5CF6).withOpacity(0.16 - 0.13 * v)),
+    return AnimatedBuilder(
+      animation: _pulse,
+      builder: (context, _) {
+        final v = _pulse.value;
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            // Outer glow pulse — softer opacity
+            Container(
+              width: 78 + 14 * v,
+              height: 78 + 14 * v,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.neonPurple.withOpacity(0.14 - 0.10 * v),
               ),
-              Container(
-                width: 68 + 10 * v,
-                height: 68 + 10 * v,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF3B82F6).withOpacity(0.10 - 0.08 * v)),
-              ),
-            ]);
-          },
-        ),
-        Container(
-          width: 68,
-          height: 68,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              colors: [Color(0xFF7C3AED), Color(0xFF8B5CF6), Color(0xFF3B82F6), Color(0xFF06B6D4)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
             ),
-            boxShadow: [
-              BoxShadow(color: const Color(0xFF7C3AED).withOpacity(0.45), blurRadius: 22, offset: const Offset(0, 8)),
-              BoxShadow(color: const Color(0xFF3B82F6).withOpacity(0.35), blurRadius: 30, offset: const Offset(0, 12)),
-              BoxShadow(color: Colors.black.withOpacity(0.35), blurRadius: 18, offset: const Offset(0, 6)),
-            ],
-            border: Border.all(color: Colors.white.withOpacity(0.22), width: 1.6),
-          ),
-          child: Material(
-            color: Colors.transparent,
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: widget.onTap,
-              child: Stack(alignment: Alignment.center, children: [
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [Colors.white.withOpacity(0.18), Colors.transparent],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+            // Inner glow pulse
+            Container(
+              width: 70 + 8 * v,
+              height: 70 + 8 * v,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.neonBlue.withOpacity(0.08 - 0.06 * v),
+              ),
+            ),
+            // Main button
+            Container(
+              width: 62,
+              height: 62,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF7C3AED), Color(0xFF8B5CF6), Color(0xFF3B82F6), Color(0xFF06B6D4)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF7C3AED).withOpacity(0.35),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
+                  ),
+                  BoxShadow(
+                    color: const Color(0xFF3B82F6).withOpacity(0.25),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.30),
+                    blurRadius: 14,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.20),
+                  width: 1.3,
+                ),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  borderRadius: BorderRadius.circular(50),
+                  onTap: widget.onTap,
+                  splashColor: Colors.white.withOpacity(0.15),
+                  highlightColor: Colors.white.withOpacity(0.08),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Subtle top highlight
+                      Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.white.withOpacity(0.14),
+                                Colors.transparent,
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                      // Icon
+                      const Icon(
+                        Icons.center_focus_strong_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                      // Corner brackets
+                      Positioned.fill(
+                        child: Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: CustomPaint(
+                            painter: _ScanBracketPainter(),
+                            size: Size.infinite,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const Icon(Icons.center_focus_strong_rounded, color: Colors.white, size: 30),
-                Positioned.fill(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: CustomPaint(painter: _ScanBracketPainter(), size: Size.infinite),
-                  ),
-                ),
-              ]),
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 }
@@ -181,16 +274,32 @@ class _ScanFabState extends State<_ScanFab> with SingleTickerProviderStateMixin 
 class _ScanBracketPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final p = Paint()
-      ..color = Colors.white.withOpacity(0.9)
-      ..strokeWidth = 1.6
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.85)
+      ..strokeWidth = 1.4
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
-    const d = 6.0;
-    canvas.drawPath(Path()..moveTo(0, d)..lineTo(0, 0)..lineTo(d, 0), p);
-    canvas.drawPath(Path()..moveTo(size.width - d, 0)..lineTo(size.width, 0)..lineTo(size.width, d), p);
-    canvas.drawPath(Path()..moveTo(0, size.height - d)..lineTo(0, size.height)..lineTo(d, size.height), p);
-    canvas.drawPath(Path()..moveTo(size.width - d, size.height)..lineTo(size.width, size.height)..lineTo(size.width, size.height - d), p);
+    const d = 5.0;
+    // Top-left
+    canvas.drawPath(
+      Path()..moveTo(0, d)..lineTo(0, 0)..lineTo(d, 0),
+      paint,
+    );
+    // Top-right
+    canvas.drawPath(
+      Path()..moveTo(size.width - d, 0)..lineTo(size.width, 0)..lineTo(size.width, d),
+      paint,
+    );
+    // Bottom-left
+    canvas.drawPath(
+      Path()..moveTo(0, size.height - d)..lineTo(0, size.height)..lineTo(d, size.height),
+      paint,
+    );
+    // Bottom-right
+    canvas.drawPath(
+      Path()..moveTo(size.width - d, size.height)..lineTo(size.width, size.height)..lineTo(size.width, size.height - d),
+      paint,
+    );
   }
 
   @override
@@ -198,7 +307,7 @@ class _ScanBracketPainter extends CustomPainter {
 }
 
 // ---------------------------------------------------------------------------
-// Premium glass bottom bar
+// Premium glass bottom bar — refined spacing, smoother animations
 // ---------------------------------------------------------------------------
 
 class _PremiumBottomBar extends StatelessWidget {
@@ -212,30 +321,63 @@ class _PremiumBottomBar extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(10, 0, 10, 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.55), blurRadius: 30, offset: const Offset(0, 14))],
-        border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.50),
+            blurRadius: 28,
+            offset: const Offset(0, 12),
+          ),
+        ],
+        border: Border.all(
+          color: Colors.white.withOpacity(0.08),
+          width: 1,
+        ),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFF0B102A).withOpacity(0.94),
+              color: const Color(0xFF0B102A).withOpacity(0.90),
               borderRadius: BorderRadius.circular(28),
               border: Border.all(color: Colors.white.withOpacity(0.06)),
             ),
             child: SafeArea(
               top: false,
               child: SizedBox(
-                height: 66,
+                height: 64,
                 child: Row(
                   children: [
-                    _NavItem(icon: Icons.home_rounded, iconOutlined: Icons.home_outlined, label: 'Home', selected: current == 0, onTap: () => onSelect(0)),
-                    _NavItem(icon: Icons.folder_rounded, iconOutlined: Icons.folder_outlined, label: 'Documents', selected: current == 1, onTap: () => onSelect(1)),
-                    const SizedBox(width: 64),
-                    _NavItem(icon: Icons.auto_awesome_rounded, iconOutlined: Icons.auto_awesome_outlined, label: 'AI Tools', selected: current == 2, onTap: () => onSelect(2)),
-                    _NavItem(icon: Icons.person_rounded, iconOutlined: Icons.person_outline_rounded, label: 'Profile', selected: current == 3, onTap: () => onSelect(3)),
+                    _NavItem(
+                      icon: Icons.home_rounded,
+                      iconOutlined: Icons.home_outlined,
+                      label: 'Home',
+                      selected: current == 0,
+                      onTap: () => onSelect(0),
+                    ),
+                    _NavItem(
+                      icon: Icons.folder_rounded,
+                      iconOutlined: Icons.folder_outlined,
+                      label: 'Documents',
+                      selected: current == 1,
+                      onTap: () => onSelect(1),
+                    ),
+                    const SizedBox(width: 58),
+                    _NavItem(
+                      icon: Icons.auto_awesome_rounded,
+                      iconOutlined: Icons.auto_awesome_outlined,
+                      label: 'AI Tools',
+                      selected: current == 2,
+                      onTap: () => onSelect(2),
+                    ),
+                    _NavItem(
+                      icon: Icons.person_rounded,
+                      iconOutlined: Icons.person_outline_rounded,
+                      label: 'Profile',
+                      selected: current == 3,
+                      onTap: () => onSelect(3),
+                    ),
                   ],
                 ),
               ),
@@ -253,55 +395,90 @@ class _NavItem extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  const _NavItem({required this.icon, required this.iconOutlined, required this.label, required this.selected, required this.onTap});
+
+  const _NavItem({
+    required this.icon,
+    required this.iconOutlined,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          height: 66,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: Icon(
-                  selected ? icon : iconOutlined,
-                  key: ValueKey(selected),
-                  color: selected ? Colors.white : const Color(0xFF8B94B8),
-                  size: selected ? 22 : 20,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(24),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: onTap,
+          splashColor: AppColors.neonPurple.withOpacity(0.15),
+          highlightColor: AppColors.neonPurple.withOpacity(0.06),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            height: 64,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  transitionBuilder: (child, anim) => ScaleTransition(
+                    scale: anim,
+                    child: FadeTransition(
+                      opacity: anim,
+                      child: child,
+                    ),
+                  ),
+                  child: Icon(
+                    selected ? icon : iconOutlined,
+                    key: ValueKey<bool>(selected),
+                    color: selected ? Colors.white : const Color(0xFF8B94B8),
+                    size: selected ? 23 : 20,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: selected ? Colors.white : const Color(0xFF8B94B8),
-                  fontSize: 10,
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                  letterSpacing: -0.05,
+                const SizedBox(height: 3),
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  style: TextStyle(
+                    color: selected ? Colors.white : const Color(0xFF8B94B8),
+                    fontSize: selected ? 10.5 : 10,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                    letterSpacing: selected ? 0.0 : -0.05,
+                  ),
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                width: selected ? 18 : 0,
-                height: 3,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFF3B82F6)]),
-                  borderRadius: BorderRadius.circular(2),
-                  boxShadow: selected ? [BoxShadow(color: const Color(0xFF8B5CF6).withOpacity(0.6), blurRadius: 6)] : null,
+                const SizedBox(height: 3),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 240),
+                  curve: Curves.easeOutCubic,
+                  width: selected ? 20 : 0,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF8B5CF6), Color(0xFF3B82F6)],
+                    ),
+                    borderRadius: BorderRadius.circular(2),
+                    boxShadow: selected
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xFF8B5CF6).withOpacity(0.55),
+                              blurRadius: 6,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : null,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -310,7 +487,7 @@ class _NavItem extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Floating AI Bot Assistant Button
+// Floating AI Bot Assistant Button — improved glassmorphism
 // ---------------------------------------------------------------------------
 
 class _FloatingBotButton extends StatefulWidget {
@@ -320,12 +497,17 @@ class _FloatingBotButton extends StatefulWidget {
   State<_FloatingBotButton> createState() => _FloatingBotButtonState();
 }
 
-class _FloatingBotButtonState extends State<_FloatingBotButton> with SingleTickerProviderStateMixin {
+class _FloatingBotButtonState extends State<_FloatingBotButton>
+    with SingleTickerProviderStateMixin {
   late AnimationController _bob;
+
   @override
   void initState() {
     super.initState();
-    _bob = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))..repeat(reverse: true);
+    _bob = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    )..repeat(reverse: true);
   }
 
   @override
@@ -338,66 +520,155 @@ class _FloatingBotButtonState extends State<_FloatingBotButton> with SingleTicke
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _bob,
-      builder: (context, child) => Transform.translate(offset: Offset(0, -3 * _bob.value), child: child),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(colors: [Color(0xFF1E1B4B), Color(0xFF312E81)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-            border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.6), width: 1.4),
-            boxShadow: [
-              BoxShadow(color: const Color(0xFF8B5CF6).withOpacity(0.35), blurRadius: 18, offset: const Offset(0, 8)),
-              BoxShadow(color: Colors.black.withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 6)),
-            ],
-          ),
-          child: Stack(alignment: Alignment.center, children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(colors: [const Color(0xFF8B5CF6).withOpacity(0.25), Colors.transparent]),
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(0, -3 * math.sin(_bob.value * math.pi * 2)),
+          child: child,
+        );
+      },
+      child: Semantics(
+        label: 'AI Assistant Button',
+        button: true,
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1A0F3D), Color(0xFF2A1A5A)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
+              border: Border.all(
+                color: AppColors.neonPurple.withOpacity(0.45),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.neonPurple.withOpacity(0.30),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.30),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFFF5F3FF), Color(0xFFDDD6FE)]),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withOpacity(0.9), width: 1),
-              ),
-              child: Stack(alignment: Alignment.center, children: [
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Glass inner ring
                 Container(
-                  width: 28,
-                  height: 16,
-                  decoration: BoxDecoration(color: const Color(0xFF0F0B2A), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.4))),
-                  child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-                    Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF8B5CF6), shape: BoxShape.circle)),
-                    Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF3B82F6), shape: BoxShape.circle)),
-                  ]),
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        AppColors.neonPurple.withOpacity(0.20),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
                 ),
-                Positioned(top: 6, child: Container(width: 2, height: 4, decoration: BoxDecoration(color: const Color(0xFF8B5CF6).withOpacity(0.9), borderRadius: BorderRadius.circular(2)))),
-              ]),
-            ),
-            Positioned(
-              right: 2,
-              bottom: 2,
-              child: Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF22C55E),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF0B102A), width: 2),
-                  boxShadow: [BoxShadow(color: const Color(0xFF22C55E).withOpacity(0.6), blurRadius: 6)],
+                // Robot face
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFF5F3FF), Color(0xFFDDD6FE)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.85),
+                      width: 1,
+                    ),
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Eyes
+                      Container(
+                        width: 26,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F0B2A),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: AppColors.neonPurple.withOpacity(0.35),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: const BoxDecoration(
+                                color: AppColors.neonPurple,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: const BoxDecoration(
+                                color: AppColors.neonBlue,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Antenna glow
+                      Positioned(
+                        top: 5,
+                        child: Container(
+                          width: 1.5,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: AppColors.neonPurple.withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+                // Status dot — online indicator
+                Positioned(
+                  right: 3,
+                  bottom: 3,
+                  child: Container(
+                    width: 11,
+                    height: 11,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF22C55E),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0xFF070A1E),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF22C55E).withOpacity(0.5),
+                          blurRadius: 5,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ]),
+          ),
         ),
       ),
     );
