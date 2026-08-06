@@ -156,12 +156,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _SectionHeader(title: 'Quick Actions', actionLabel: 'View All', onTap: widget.onSeeAllTools),
-                        SizedBox(
-                          height: 92,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            physics: const BouncingScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+                          child: Wrap(
+                            spacing: 0,
+                            runSpacing: 16,
+                            alignment: WrapAlignment.spaceEvenly,
                             children: [
                               _QuickCircle(icon: Icons.document_scanner_rounded, label: 'Scan', color: const Color(0xFFA855F7), glow: const Color(0xFFA855F7), onTap: () => context.push(RouteNames.scanner)),
                               _QuickCircle(icon: Icons.image_rounded, label: 'Gallery', color: const Color(0xFF3B82F6), glow: const Color(0xFF3B82F6), onTap: _importGallery),
@@ -189,49 +189,51 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _SectionHeader(title: 'AI Suggestions', actionLabel: 'See All', onTap: widget.onSeeAllTools),
-                        SizedBox(
-                          height: 126,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            physics: const BouncingScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                            children: [
-                              _SuggestionCard(
-                                title: 'Summarize\nPDF',
-                                icon: Icons.description_rounded,
-                                gradient: const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFFA855F7)]),
-                                borderColor: const Color(0xFFA855F7).withOpacity(0.45),
-                                onTap: () => context.push(RouteNames.aiAssistant),
-                              ),
-                              _SuggestionCard(
-                                title: 'Translate\nNotes',
-                                icon: Icons.language_rounded,
-                                gradient: const LinearGradient(colors: [Color(0xFF0EA5E9), Color(0xFF3B82F6)]),
-                                borderColor: const Color(0xFF3B82F6).withOpacity(0.4),
-                                onTap: () => context.push(RouteNames.aiAssistant),
-                              ),
-                              _SuggestionCard(
-                                title: 'Explain\nHomework',
-                                icon: Icons.school_rounded,
-                                gradient: const LinearGradient(colors: [Color(0xFF16A34A), Color(0xFF15803D)]),
-                                borderColor: const Color(0xFF22C55E).withOpacity(0.4),
-                                onTap: () => context.push(RouteNames.aiAssistant),
-                              ),
-                              _SuggestionCard(
-                                title: 'Analyze\nReport',
-                                icon: Icons.analytics_rounded,
-                                gradient: const LinearGradient(colors: [Color(0xFFEA580C), Color(0xFFF97316)]),
-                                borderColor: const Color(0xFFF97316).withOpacity(0.4),
-                                onTap: () => context.push(RouteNames.receiptAnalysis),
-                              ),
-                              _SuggestionCard(
-                                title: 'Extract\nTable',
-                                icon: Icons.table_chart_rounded,
-                                gradient: const LinearGradient(colors: [Color(0xFF1E3A5F), Color(0xFF2B4A7A)]),
-                                borderColor: const Color(0xFF60A5FA).withOpacity(0.35),
-                                onTap: () => _ocrFlow(),
-                              ),
-                            ],
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                          child: IntrinsicHeight(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _SuggestionCard(
+                                  title: 'Summarize\nPDF',
+                                  icon: Icons.description_rounded,
+                                  gradient: const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFFA855F7)]),
+                                  borderColor: const Color(0xFFA855F7).withOpacity(0.45),
+                                  onTap: () => context.push(RouteNames.aiAssistant),
+                                ),
+                                _SuggestionCard(
+                                  title: 'Translate\nNotes',
+                                  icon: Icons.language_rounded,
+                                  gradient: const LinearGradient(colors: [Color(0xFF0EA5E9), Color(0xFF3B82F6)]),
+                                  borderColor: const Color(0xFF3B82F6).withOpacity(0.4),
+                                  onTap: () => context.push(RouteNames.aiAssistant),
+                                ),
+                                _SuggestionCard(
+                                  title: 'Explain\nHomework',
+                                  icon: Icons.school_rounded,
+                                  gradient: const LinearGradient(colors: [Color(0xFF16A34A), Color(0xFF15803D)]),
+                                  borderColor: const Color(0xFF22C55E).withOpacity(0.4),
+                                  onTap: () => context.push(RouteNames.aiAssistant),
+                                ),
+                                _SuggestionCard(
+                                  title: 'Analyze\nReport',
+                                  icon: Icons.analytics_rounded,
+                                  gradient: const LinearGradient(colors: [Color(0xFFEA580C), Color(0xFFF97316)]),
+                                  borderColor: const Color(0xFFF97316).withOpacity(0.4),
+                                  onTap: () => context.push(RouteNames.receiptAnalysis),
+                                ),
+                                _SuggestionCard(
+                                  title: 'Extract\nTable',
+                                  icon: Icons.table_chart_rounded,
+                                  gradient: const LinearGradient(colors: [Color(0xFF1E3A5F), Color(0xFF2B4A7A)]),
+                                  borderColor: const Color(0xFF60A5FA).withOpacity(0.35),
+                                  onTap: () => _ocrFlow(),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -363,7 +365,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                 ),
 
                 // bottom padding for nav + fab + floating bot
-                const SliverToBoxAdapter(child: SizedBox(height: 140)),
+                SliverToBoxAdapter(child: SafeArea(top: false, child: SizedBox(height: 160))),
               ],
             ),
           ),
@@ -1100,16 +1102,16 @@ class _AiAssistantCard extends StatelessWidget {
           child: const Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(Icons.auto_awesome_rounded, color: Color(0xFFD8B4FE), size: 11),
             SizedBox(width: 5),
-            Text('AI ASSISTANT', style: TextStyle(color: Color(0xFFD8B4FE), fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 0.8)),
+            Flexible(child: Text('AI ASSISTANT', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Color(0xFFD8B4FE), fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 0.8))),
           ]),
         ),
         const SizedBox(height: 8),
         ShaderMask(
           shaderCallback: (r) => const LinearGradient(colors: [Colors.white, Color(0xFFD8B4FE)]).createShader(r),
-          child: const Text('Your AI Document Assistant', style: TextStyle(color: Colors.white, fontSize: 16.5, fontWeight: FontWeight.w900, height: 1.15, letterSpacing: -0.3)),
+          child: const Text('Your AI Document Assistant', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontSize: 16.5, fontWeight: FontWeight.w900, height: 1.15, letterSpacing: -0.3)),
         ),
         const SizedBox(height: 6),
-        Text('Summarize, translate, explain and chat\nwith any document using the power of AI.', style: TextStyle(color: Colors.white.withOpacity(0.68), fontSize: 11.2, height: 1.5, fontWeight: FontWeight.w500)),
+        Text('Summarize, translate, explain and chat with any document using the power of AI.', maxLines: 3, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withOpacity(0.68), fontSize: 11.2, height: 1.5, fontWeight: FontWeight.w500)),
         const SizedBox(height: 10),
         Wrap(spacing: 6, runSpacing: 6, children: [
           _AiPill(icon: Icons.article_rounded, label: 'Summarize', onTap: onSummarize),
@@ -1131,7 +1133,7 @@ class _AiAssistantCard extends StatelessWidget {
               border: Border.all(color: Colors.white.withOpacity(0.14)),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Text('Start AI Chat', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
+              const Flexible(child: Text('Start AI Chat', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800))),
               const SizedBox(width: 16),
               Container(
                 width: 24,
@@ -1187,32 +1189,37 @@ class _RobotIllustration extends StatelessWidget {
   const _RobotIllustration();
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 176,
-      child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
-        Positioned(
-          bottom: 6,
-          child: Container(
-            width: 96,
-            height: 22,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              gradient: RadialGradient(colors: [const Color(0xFF8B5CF6).withOpacity(0.55), Colors.transparent]),
-              boxShadow: [BoxShadow(color: const Color(0xFF8B5CF6).withOpacity(0.5), blurRadius: 22, spreadRadius: 2)],
-            ),
-          ),
-        ),
-        Positioned(bottom: 10, child: Container(width: 84, height: 28, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.7), width: 1.2)))),
-        Positioned(bottom: 16, child: Container(width: 66, height: 22, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFF3B82F6).withOpacity(0.65), width: 1)))),
-        Positioned(left: 2, top: 18, child: _FloatingDoc(icon: Icons.picture_as_pdf_rounded, color: const Color(0xFFEF4444), label: 'PDF', rotation: -12)),
-        Positioned(right: -2, top: 22, child: _FloatingDoc(icon: Icons.description_rounded, color: const Color(0xFF3B82F6), label: 'W', rotation: 10)),
-        Positioned(right: 6, bottom: 56, child: _FloatingDoc(icon: Icons.description_rounded, color: const Color(0xFF8B94B8), label: '', rotation: 12, small: true)),
-        Column(mainAxisSize: MainAxisSize.min, children: [
-          Stack(clipBehavior: Clip.none, children: [
-            Container(width: 2.5, height: 10, color: const Color(0xFFC4B5FD).withOpacity(0.9)),
-            Positioned(top: -6, left: -4, child: Container(width: 10, height: 10, decoration: BoxDecoration(color: const Color(0xFF22D3EE), shape: BoxShape.circle, border: Border.all(color: Colors.white.withOpacity(0.8), width: 1), boxShadow: [BoxShadow(color: const Color(0xFF22D3EE).withOpacity(0.6), blurRadius: 8)]))),
-          ]),
-          const SizedBox(height: 2),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return FittedBox(
+          fit: BoxFit.contain,
+          child: SizedBox(
+            height: 176,
+            width: 176,
+            child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
+              Positioned(
+                bottom: 6,
+                child: Container(
+                  width: 96,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    gradient: RadialGradient(colors: [const Color(0xFF8B5CF6).withOpacity(0.55), Colors.transparent]),
+                    boxShadow: [BoxShadow(color: const Color(0xFF8B5CF6).withOpacity(0.5), blurRadius: 22, spreadRadius: 2)],
+                  ),
+                ),
+              ),
+              Positioned(bottom: 10, child: Container(width: 84, height: 28, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.7), width: 1.2)))),
+              Positioned(bottom: 16, child: Container(width: 66, height: 22, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFF3B82F6).withOpacity(0.65), width: 1)))),
+              Positioned(left: 2, top: 18, child: _FloatingDoc(icon: Icons.picture_as_pdf_rounded, color: const Color(0xFFEF4444), label: 'PDF', rotation: -12)),
+              Positioned(right: -2, top: 22, child: _FloatingDoc(icon: Icons.description_rounded, color: const Color(0xFF3B82F6), label: 'W', rotation: 10)),
+              Positioned(right: 6, bottom: 56, child: _FloatingDoc(icon: Icons.description_rounded, color: const Color(0xFF8B94B8), label: '', rotation: 12, small: true)),
+              Column(mainAxisSize: MainAxisSize.min, children: [
+                Stack(clipBehavior: Clip.none, children: [
+                  Container(width: 2.5, height: 10, color: const Color(0xFFC4B5FD).withOpacity(0.9)),
+                  Positioned(top: -6, left: -4, child: Container(width: 10, height: 10, decoration: BoxDecoration(color: const Color(0xFF22D3EE), shape: BoxShape.circle, border: Border.all(color: Colors.white.withOpacity(0.8), width: 1), boxShadow: [BoxShadow(color: const Color(0xFF22D3EE).withOpacity(0.6), blurRadius: 8)]))),
+                ]),
+                const SizedBox(height: 2),
           Container(
             width: 96,
             height: 96,
@@ -1350,7 +1357,6 @@ class _QuickCircleState extends State<_QuickCircle> with SingleTickerProviderSta
         curve: Curves.easeOutCubic,
         child: Container(
           width: 74,
-          margin: const EdgeInsets.only(right: 10),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
               width: 58,
@@ -1433,7 +1439,7 @@ class _SuggestionCardState extends State<_SuggestionCard> {
                 Center(child: Icon(widget.icon, color: Colors.white, size: 20)),
               ]),
             ),
-            const Spacer(),
+            const SizedBox(height: 12),
             Text(widget.title, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800, height: 1.25, letterSpacing: -0.1)),
           ]),
         ),
@@ -1972,78 +1978,78 @@ class _PremiumUpgradeBanner extends StatelessWidget {
           boxShadow: [BoxShadow(color: const Color(0xFF8B5CF6).withOpacity(0.22), blurRadius: 20, offset: const Offset(0, 8)), BoxShadow(color: Colors.black.withOpacity(0.35), blurRadius: 16, offset: const Offset(0, 6))],
         ),
         child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 360;
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [Color(0xFFFF8C00), Color(0xFFFFC857), Color(0xFFFFE08A)]),
-                    borderRadius: BorderRadius.circular(11),
-                    boxShadow: [BoxShadow(color: const Color(0xFFFFC857).withOpacity(0.35), blurRadius: 10)],
-                  ),
-                  child: const Icon(Icons.workspace_premium_rounded, color: Color(0xFF2A1B00), size: 24),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      Text('Unlock Unlimited Power', style: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.2)),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.auto_awesome_rounded, color: Color(0xFFC4B5FD), size: 10),
-                    ]),
-                    const SizedBox(height: 1),
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Text('Scan', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: -0.3)),
-                      ShaderMask(
-                        shaderCallback: (r) => const LinearGradient(colors: [Color(0xFFE879F9), Color(0xFF8B5CF6), Color(0xFF3B82F6)]).createShader(r),
-                        child: const Text('X', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF8C00), Color(0xFFFFC857)]), borderRadius: BorderRadius.circular(6)),
-                        child: const Text('PRO', style: TextStyle(color: Color(0xFF2A1B00), fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.6)),
-                      ),
-                    ]),
-                    const SizedBox(height: 4),
-                    if (!isNarrow)
-                      Wrap(spacing: 8, runSpacing: 4, children: const [
-                        _MiniFeature(icon: Icons.all_inclusive_rounded, label: 'Unlimited AI'),
-                        _MiniFeature(icon: Icons.text_snippet_rounded, label: 'Unlimited OCR'),
-                        _MiniFeature(icon: Icons.cloud_rounded, label: 'Cloud\nBackup'),
-                      ]),
-                  ]),
-                ),
-                if (!isNarrow) ...[
-                  const SizedBox(width: 8),
-                  Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
-                    const Wrap(spacing: 8, children: [
-                      _MiniFeature(icon: Icons.block_rounded, label: 'No Ads'),
-                      _MiniFeature(icon: Icons.support_agent_rounded, label: 'Priority\nSupport'),
-                    ]),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFF3B82F6)]),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [BoxShadow(color: const Color(0xFF7C3AED).withOpacity(0.35), blurRadius: 10)],
-                      ),
-                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                        Text('Upgrade Now', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
-                        SizedBox(width: 4),
-                        Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 13),
-                      ]),
-                    ),
-                  ]),
-                ],
-              ],
-            );
-          },
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 360;
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(colors: [Color(0xFFFF8C00), Color(0xFFFFC857), Color(0xFFFFE08A)]),
+                            borderRadius: BorderRadius.circular(11),
+                            boxShadow: [BoxShadow(color: const Color(0xFFFFC857).withOpacity(0.35), blurRadius: 10)],
+                          ),
+                          child: const Icon(Icons.workspace_premium_rounded, color: Color(0xFF2A1B00), size: 24),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                            Row(mainAxisSize: MainAxisSize.min, children: [
+                              Flexible(child: Text('Unlock Unlimited Power', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.2))),
+                              const SizedBox(width: 4),
+                              const Icon(Icons.auto_awesome_rounded, color: Color(0xFFC4B5FD), size: 10),
+                            ]),
+                            const SizedBox(height: 1),
+                            Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
+                              const Text('Scan', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: -0.3)),
+                              ShaderMask(
+                                shaderCallback: (r) => const LinearGradient(colors: [Color(0xFFE879F9), Color(0xFF8B5CF6), Color(0xFF3B82F6)]).createShader(r),
+                                child: const Text('X', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF8C00), Color(0xFFFFC857)]), borderRadius: BorderRadius.circular(6)),
+                                child: const Text('PRO', style: TextStyle(color: Color(0xFF2A1B00), fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.6)),
+                              ),
+                            ]),
+                            const SizedBox(height: 4),
+                            if (!isNarrow)
+                              Wrap(spacing: 8, runSpacing: 4, children: const [
+                                _MiniFeature(icon: Icons.all_inclusive_rounded, label: 'Unlimited AI'),
+                                _MiniFeature(icon: Icons.text_snippet_rounded, label: 'Unlimited OCR'),
+                                _MiniFeature(icon: Icons.cloud_rounded, label: 'Cloud\nBackup'),
+                              ]),
+                          ]),
+                        ),
+                        if (!isNarrow) ...[
+                          const SizedBox(width: 8),
+                          Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
+                            const Wrap(spacing: 8, children: [
+                              _MiniFeature(icon: Icons.block_rounded, label: 'No Ads'),
+                              _MiniFeature(icon: Icons.support_agent_rounded, label: 'Priority\nSupport'),
+                            ]),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFF3B82F6)]),
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [BoxShadow(color: const Color(0xFF7C3AED).withOpacity(0.35), blurRadius: 10)],
+                              ),
+                              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                                Text('Upgrade Now', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+                                SizedBox(width: 4),
+                                Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 13),
+                              ]),
+                            ),
+                          ]),
+                        ],
+                      ],
+                    );
+                  },
         ),
       ),
     );
