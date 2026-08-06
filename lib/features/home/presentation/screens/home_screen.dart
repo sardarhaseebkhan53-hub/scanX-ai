@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -17,12 +18,12 @@ import '../../../../services/pdf/pdf_service.dart';
 import '../../../../shared/widgets/document_picker_sheet.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../../shared/widgets/skeleton_loader.dart';
+import '../../../settings/presentation/controllers/user_profile_controller.dart';
 import '../controllers/home_controller.dart';
 
 // ---------------------------------------------------------------------------
 // ScanX AI — Premium Home Landing Page
-// Pixel-perfect recreation of reference design:
-// dark space, glassmorphism, neon gradients, glow, subtle blur
+// Dark space, glassmorphism, neon gradients, glow, subtle blur
 // ---------------------------------------------------------------------------
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -48,7 +49,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     _orbCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 10))..repeat(reverse: true);
     _entrance = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
     _shine = AnimationController(vsync: this, duration: const Duration(milliseconds: 2800))..repeat();
-    // staggered entrance delay
     Future.delayed(const Duration(milliseconds: 120), () {
       if (mounted) _entrance.forward();
     });
@@ -62,17 +62,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     super.dispose();
   }
 
+  /// Returns a time-appropriate greeting string.
+  String _greeting() {
+    final h = DateTime.now().hour;
+    if (h < 12) return 'Good Morning';
+    if (h < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }
+
   @override
   Widget build(BuildContext context) {
     final homeState = ref.watch(homeProvider);
     final homeCtrl = ref.read(homeProvider.notifier);
+    final userProfile = ref.watch(userProfileProvider);
+    final screenW = MediaQuery.of(context).size.width;
+    final isCompact = screenW < 380;
+    final hPad = isCompact ? 12.0 : 16.0;
 
     return Scaffold(
       backgroundColor: const Color(0xFF070A1E),
       body: Stack(
         children: [
           Positioned.fill(child: _PremiumBackground(anim: _orbCtrl, shine: _shine)),
-          // subtle dot grid overlay
           const Positioned.fill(child: _DotGrid()),
           RefreshIndicator(
             color: AppColors.neonPurple,
@@ -89,9 +100,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                       controller: _entrance,
                       delay: 0,
                       child: _HomeHeader(
+                        greeting: _greeting(),
+                        userName: userProfile.isLoggedIn ? userProfile.displayName : null,
+                        avatarPath: userProfile.avatarPath,
                         onProTap: () => context.push(RouteNames.premiumPaywall),
-                        onBellTap: () {},
-                        onAvatarTap: () {},
+                        onBellTap: () => context.push(RouteNames.notifications),
+                        onAvatarTap: () => ref.read(userProfileProvider.notifier).pickAvatarFromGallery(),
                       ),
                     ),
                   ),
@@ -99,7 +113,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                 // ---- Search ----
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                    padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 10),
                     child: _AnimatedEntrance(
                       controller: _entrance,
                       delay: 80,
@@ -115,7 +129,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                 // ---- AI Assistant Hero ----
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+                    padding: EdgeInsets.fromLTRB(hPad, 6, hPad, 10),
                     child: _AnimatedEntrance(
                       controller: _entrance,
                       delay: 140,
@@ -139,6 +153,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                     delay: 200,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         _SectionHeader(title: 'Quick Actions', actionLabel: 'View All', onTap: widget.onSeeAllTools),
                         SizedBox(
@@ -171,6 +186,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                     delay: 260,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         _SectionHeader(title: 'AI Suggestions', actionLabel: 'See All', onTap: widget.onSeeAllTools),
                         SizedBox(
@@ -229,11 +245,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                     controller: _entrance,
                     delay: 320,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                      padding: EdgeInsets.fromLTRB(hPad, 6, hPad, 0),
                       child: LayoutBuilder(builder: (context, c) {
                         final isWide = c.maxWidth > 600;
                         final recentList = _buildRecentList(homeState);
                         final sideColumn = Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             _ContinueWorkingCard(
                               docTitle: homeState.documents.isNotEmpty ? homeState.documents.first.title : 'Physics Notes.pdf',
@@ -262,6 +279,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                           );
                         }
                         return Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             recentList,
                             const SizedBox(height: 12),
@@ -279,7 +297,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                     controller: _entrance,
                     delay: 380,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 0),
                       child: _StatsPillsRow(counts: _computeCounts(homeState)),
                     ),
                   ),
@@ -291,24 +309,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                     controller: _entrance,
                     delay: 440,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                      padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 8),
                       child: LayoutBuilder(builder: (context, c) {
                         final w = c.maxWidth;
-                        // on narrow, 2x2 grid, on wide 1x4 row
                         if (w < 560) {
                           return Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Row(children: [
-                                Expanded(child: _TodayScansCard(count: _todayCount(homeState))),
-                                const SizedBox(width: 10),
-                                Expanded(child: _OcrAccuracyCard()),
-                              ]),
+                              IntrinsicHeight(
+                                child: Row(children: [
+                                  Expanded(child: _TodayScansCard(count: _todayCount(homeState))),
+                                  const SizedBox(width: 10),
+                                  Expanded(child: _OcrAccuracyCard()),
+                                ]),
+                              ),
                               const SizedBox(height: 10),
-                              Row(children: [
-                                Expanded(child: _AiTokensCard()),
-                                const SizedBox(width: 10),
-                                Expanded(child: _DailyTipCard()),
-                              ]),
+                              IntrinsicHeight(
+                                child: Row(children: [
+                                  Expanded(child: _AiTokensCard()),
+                                  const SizedBox(width: 10),
+                                  Expanded(child: _DailyTipCard()),
+                                ]),
+                              ),
                             ],
                           );
                         }
@@ -334,14 +356,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                     controller: _entrance,
                     delay: 500,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                      padding: EdgeInsets.fromLTRB(hPad, 6, hPad, 0),
                       child: _PremiumUpgradeBanner(onTap: () => context.push(RouteNames.premiumPaywall)),
                     ),
                   ),
                 ),
 
                 // bottom padding for nav + fab + floating bot
-                const SliverToBoxAdapter(child: SizedBox(height: 118)),
+                const SliverToBoxAdapter(child: SizedBox(height: 140)),
               ],
             ),
           ),
@@ -407,20 +429,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     }
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Text('Recent Documents', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
-            const Spacer(),
+            const Expanded(
+              child: Text(
+                'Recent Documents',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: -0.2),
+              ),
+            ),
             _SeeAll(onTap: widget.onSeeAllDocs),
           ],
         ),
         const SizedBox(height: 10),
         Column(
+          mainAxisSize: MainAxisSize.min,
           children: List.generate(math.min(homeState.documents.length, 3), (i) {
             final doc = homeState.documents[i];
-            final isPdf = doc.title.toLowerCase().endsWith('.pdf') || doc.pdfPath.isNotEmpty;
             return Padding(
               padding: EdgeInsets.only(bottom: i == 2 ? 0 : 10),
               child: _RecentDocRowNew(doc: doc, onTap: () => context.push(RouteNames.ocrViewer, extra: doc.id)),
@@ -431,7 +460,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     );
   }
 
-  // helpers
   int _todayCount(HomeState s) {
     final now = DateTime.now();
     return s.documents.where((d) => d.createdAt.year == now.year && d.createdAt.month == now.month && d.createdAt.day == now.day).length;
@@ -440,9 +468,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   Map<String, int> _computeCounts(HomeState s) {
     return {
       'docs': s.documents.length,
-      'chats': 48, // placeholder chats count (could link to AI history)
+      'chats': 48,
       'scans': s.documents.fold<int>(0, (a, b) => a + b.pageCount),
-      'gb': 8, // placeholder
+      'gb': 8,
     };
   }
 
@@ -515,7 +543,6 @@ class _PremiumBackground extends StatelessWidget {
             ),
           ),
           child: Stack(children: [
-            // large ambient orbs
             Positioned(
               top: -90 + 10 * anim.value,
               left: -80,
@@ -552,7 +579,6 @@ class _PremiumBackground extends StatelessWidget {
                 ),
               ),
             ),
-            // subtle scanline shine sweep
             Positioned.fill(
               child: Opacity(
                 opacity: 0.04 + 0.02 * math.sin(shine.value * 2 * math.pi),
@@ -567,7 +593,6 @@ class _PremiumBackground extends StatelessWidget {
                 ),
               ),
             ),
-            // vignette
             Positioned.fill(
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -638,82 +663,123 @@ class _AnimatedEntrance extends StatelessWidget {
 }
 
 // ===========================================================================
-// Header
+// Header — dynamic greeting, clickable avatar with image picker, notification
 // ===========================================================================
 
 class _HomeHeader extends StatelessWidget {
+  final String greeting;
+  final String? userName;
+  final String? avatarPath;
   final VoidCallback onProTap;
   final VoidCallback onBellTap;
   final VoidCallback onAvatarTap;
-  const _HomeHeader({required this.onProTap, required this.onBellTap, required this.onAvatarTap});
+  const _HomeHeader({
+    required this.greeting,
+    required this.userName,
+    required this.avatarPath,
+    required this.onProTap,
+    required this.onBellTap,
+    required this.onAvatarTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              ShaderMask(
-                shaderCallback: (r) => const LinearGradient(colors: [Color(0xFFE879F9), Color(0xFFA855F7), Color(0xFFC084FC)]).createShader(r),
-                child: const Text('Good Morning,', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700, height: 1.1, letterSpacing: -0.1)),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompact = constraints.maxWidth < 380;
+          final btnSize = isCompact ? 46.0 : 54.0;
+          final gap = isCompact ? 6.0 : 10.0;
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Greeting column
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  ShaderMask(
+                    shaderCallback: (r) => const LinearGradient(colors: [Color(0xFFE879F9), Color(0xFFA855F7), Color(0xFFC084FC)]).createShader(r),
+                    child: Text(
+                      '$greeting,',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: isCompact ? 12 : 14,
+                        fontWeight: FontWeight.w700,
+                        height: 1.1,
+                        letterSpacing: -0.1,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          userName ?? 'Guest',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: isCompact ? 20 : 24,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.6,
+                            height: 1.05,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Text('👋', style: TextStyle(fontSize: 20)),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    userName != null ? 'Welcome back to ScanX AI' : 'Scan smarter with AI',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.white.withOpacity(0.62), fontSize: 12.5, fontWeight: FontWeight.w500),
+                  ),
+                ]),
               ),
-              const SizedBox(height: 2),
-              Row(children: [
-                const Text('Haseeb', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.6, height: 1.05)),
-                const SizedBox(width: 6),
-                const Text('👋', style: TextStyle(fontSize: 20)),
-              ]),
-              const SizedBox(height: 2),
-              Text('Welcome back to ScanX AI', style: TextStyle(color: Colors.white.withOpacity(0.62), fontSize: 12.5, fontWeight: FontWeight.w500)),
-            ]),
-          ),
-          const SizedBox(width: 10),
-          // PRO
-          GestureDetector(
-            onTap: onProTap,
-            child: Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: const LinearGradient(colors: [Color(0xFF3A2A0A), Color(0xFF1A1405)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                border: Border.all(color: const Color(0xFFFFC857).withOpacity(0.5), width: 1.2),
-                boxShadow: [BoxShadow(color: const Color(0xFFFFC857).withOpacity(0.18), blurRadius: 14, offset: const Offset(0, 6))],
-              ),
-              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFC857), size: 20),
-                const SizedBox(height: 1),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.2),
-                  decoration: BoxDecoration(color: const Color(0xFFFFC857), borderRadius: BorderRadius.circular(5)),
-                  child: const Text('PRO', style: TextStyle(color: Color(0xFF2A1B00), fontSize: 7, fontWeight: FontWeight.w900, letterSpacing: 0.8)),
+              SizedBox(width: gap),
+              // PRO button
+              _HeaderButton(
+                size: btnSize,
+                onTap: onProTap,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFC857), size: 20),
+                    const SizedBox(height: 1),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.2),
+                      decoration: BoxDecoration(color: const Color(0xFFFFC857), borderRadius: BorderRadius.circular(5)),
+                      child: const Text('PRO', style: TextStyle(color: Color(0xFF2A1B00), fontSize: 7, fontWeight: FontWeight.w900, letterSpacing: 0.8)),
+                    ),
+                  ],
                 ),
-              ]),
-            ),
-          ),
-          const SizedBox(width: 10),
-          // Bell
-          GestureDetector(
-            onTap: onBellTap,
-            child: Stack(clipBehavior: Clip.none, children: [
-              Container(
-                width: 54,
-                height: 54,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: const LinearGradient(colors: [Color(0xFF3A2A0A), Color(0xFF1A1405)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                  border: Border.all(color: const Color(0xFFFFC857).withOpacity(0.5), width: 1.2),
+                  boxShadow: [BoxShadow(color: const Color(0xFFFFC857).withOpacity(0.18), blurRadius: 14, offset: const Offset(0, 6))],
+                ),
+              ),
+              SizedBox(width: gap),
+              // Bell notification button
+              _HeaderButton(
+                size: btnSize,
+                onTap: onBellTap,
+                child: const Icon(Icons.notifications_rounded, color: Colors.white, size: 22),
                 decoration: BoxDecoration(
                   color: const Color(0xFF12172E),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.white.withOpacity(0.08)),
                   boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 6))],
                 ),
-                child: const Icon(Icons.notifications_rounded, color: Colors.white, size: 22),
-              ),
-              Positioned(
-                top: -2,
-                right: -2,
-                child: Container(
+                badge: Container(
                   width: 18,
                   height: 18,
                   decoration: BoxDecoration(
@@ -725,34 +791,103 @@ class _HomeHeader extends StatelessWidget {
                   child: const Center(child: Text('3', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900))),
                 ),
               ),
-            ]),
-          ),
-          const SizedBox(width: 10),
-          // Avatar — with offline fallback
-          GestureDetector(
-            onTap: onAvatarTap,
-            child: Container(
-              width: 54,
-              height: 54,
-              padding: const EdgeInsets.all(1.6),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(colors: [Color(0xFFE879F9), Color(0xFF8B5CF6), Color(0xFF3B82F6)]),
-                boxShadow: [BoxShadow(color: const Color(0xFF8B5CF6).withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 6))],
-              ),
-              child: ClipOval(
-                child: Image.network(
-                  'https://i.pravatar.cc/200?img=13',
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: const Color(0xFF1B2348),
-                    child: const Icon(Icons.person_rounded, color: Colors.white, size: 26),
+              SizedBox(width: gap),
+              // Avatar — clickable, shows picked image or default
+              GestureDetector(
+                onTap: onAvatarTap,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  width: btnSize,
+                  height: btnSize,
+                  padding: const EdgeInsets.all(1.6),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(colors: [Color(0xFFE879F9), Color(0xFF8B5CF6), Color(0xFF3B82F6)]),
+                    boxShadow: [BoxShadow(color: const Color(0xFF8B5CF6).withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 6))],
+                  ),
+                  child: ClipOval(
+                    child: avatarPath != null && File(avatarPath!).existsSync()
+                        ? Image.file(File(avatarPath!), fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const _DefaultAvatar())
+                        : const _DefaultAvatar(),
                   ),
                 ),
               ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Default avatar shown when no profile picture is set.
+class _DefaultAvatar extends StatelessWidget {
+  const _DefaultAvatar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFF1B2348),
+      child: const Icon(Icons.person_rounded, color: Colors.white70, size: 26),
+    );
+  }
+}
+
+/// Reusable header button with press animation and optional badge overlay.
+class _HeaderButton extends StatefulWidget {
+  final double size;
+  final VoidCallback onTap;
+  final Widget child;
+  final BoxDecoration decoration;
+  final Widget? badge;
+
+  const _HeaderButton({
+    required this.size,
+    required this.onTap,
+    required this.child,
+    required this.decoration,
+    this.badge,
+  });
+
+  @override
+  State<_HeaderButton> createState() => _HeaderButtonState();
+}
+
+class _HeaderButtonState extends State<_HeaderButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.90 : 1.0,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOutCubic,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: widget.size,
+              height: widget.size,
+              decoration: widget.decoration,
+              child: Center(child: widget.child),
             ),
-          ),
-        ],
+            if (widget.badge != null)
+              Positioned(
+                top: -2,
+                right: -2,
+                child: widget.badge!,
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -893,13 +1028,11 @@ class _AiAssistantCard extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(22.6),
         child: Stack(children: [
-          // inner gradient
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(colors: [Color(0xFF1B1340), Color(0xFF120E2E), Color(0xFF0F0B2A)], begin: Alignment.topLeft, end: Alignment.bottomRight),
             ),
           ),
-          // ambient orbs inside card
           Positioned(
             top: -40,
             left: -40,
@@ -918,83 +1051,98 @@ class _AiAssistantCard extends StatelessWidget {
               decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [const Color(0xFF3B82F6).withOpacity(0.18), Colors.transparent])),
             ),
           ),
-          // tiny stars
           Positioned(top: 22, right: 110, child: _Star(size: 7)),
           Positioned(top: 78, left: 164, child: _Star(size: 5, opacity: 0.7)),
           Positioned(bottom: 34, left: 198, child: _Star(size: 9, opacity: 0.9)),
-          // content
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-              // left text + pills
-              Expanded(
-                flex: 62,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFA855F7).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFA855F7).withOpacity(0.25)),
-                    ),
-                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.auto_awesome_rounded, color: Color(0xFFD8B4FE), size: 11),
-                      SizedBox(width: 5),
-                      Text('AI ASSISTANT', style: TextStyle(color: Color(0xFFD8B4FE), fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 0.8)),
-                    ]),
-                  ),
-                  const SizedBox(height: 8),
-                  ShaderMask(
-                    shaderCallback: (r) => const LinearGradient(colors: [Colors.white, Color(0xFFD8B4FE)]).createShader(r),
-                    child: const Text('Your AI Document Assistant', style: TextStyle(color: Colors.white, fontSize: 16.5, fontWeight: FontWeight.w900, height: 1.15, letterSpacing: -0.3)),
-                  ),
-                  const SizedBox(height: 6),
-                  Text('Summarize, translate, explain and chat\nwith any document using the power of AI.', style: TextStyle(color: Colors.white.withOpacity(0.68), fontSize: 11.2, height: 1.5, fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 10),
-                  // pills grid 3 + 3
-                  Wrap(spacing: 6, runSpacing: 6, children: [
-                    _AiPill(icon: Icons.article_rounded, label: 'Summarize', onTap: onSummarize),
-                    _AiPill(icon: Icons.translate_rounded, label: 'Translate', onTap: onTranslate),
-                    _AiPill(icon: Icons.edit_note_rounded, label: 'Rewrite', onTap: onRewrite),
-                    _AiPill(icon: Icons.menu_book_rounded, label: 'Explain', onTap: onExplain),
-                    _AiPill(icon: Icons.picture_as_pdf_rounded, label: 'Chat with PDF', onTap: onChatPdf),
-                    _AiPill(icon: Icons.school_rounded, label: 'Homework Helper', onTap: onHomework),
-                  ]),
-                  const SizedBox(height: 12),
-                  // Start chat button
-                  GestureDetector(
-                    onTap: onStartChat,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFF3B82F6)]),
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [BoxShadow(color: const Color(0xFF7C3AED).withOpacity(0.45), blurRadius: 16, offset: const Offset(0, 6))],
-                        border: Border.all(color: Colors.white.withOpacity(0.14)),
-                      ),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        const Text('Start AI Chat', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
-                        const SizedBox(width: 16),
-                        Container(
-                          width: 24,
-                          height: 24,
-                          decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 8)]),
-                          child: const Icon(Icons.arrow_forward_rounded, color: Color(0xFF7C3AED), size: 14),
-                        ),
-                      ]),
-                    ),
-                  ),
-                ]),
-              ),
-              const SizedBox(width: 8),
-              // right robot illustration
-              const Expanded(flex: 38, child: _RobotIllustration()),
-            ]),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 340;
+                if (isNarrow) {
+                  // Stack vertically on very narrow screens
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildLeftContent(),
+                      const SizedBox(height: 12),
+                      const Center(child: SizedBox(height: 140, child: _RobotIllustration())),
+                    ],
+                  );
+                }
+                return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                  Expanded(flex: 62, child: _buildLeftContent()),
+                  const SizedBox(width: 8),
+                  const Expanded(flex: 38, child: _RobotIllustration()),
+                ]);
+              },
+            ),
           ),
-          // top highlight line
           Positioned(top: 0, left: 18, right: 18, child: Container(height: 1, decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.transparent, Colors.white.withOpacity(0.18), Colors.transparent])))),
         ]),
       ),
+    );
+  }
+
+  Widget _buildLeftContent() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: const Color(0xFFA855F7).withOpacity(0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFA855F7).withOpacity(0.25)),
+          ),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.auto_awesome_rounded, color: Color(0xFFD8B4FE), size: 11),
+            SizedBox(width: 5),
+            Text('AI ASSISTANT', style: TextStyle(color: Color(0xFFD8B4FE), fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 0.8)),
+          ]),
+        ),
+        const SizedBox(height: 8),
+        ShaderMask(
+          shaderCallback: (r) => const LinearGradient(colors: [Colors.white, Color(0xFFD8B4FE)]).createShader(r),
+          child: const Text('Your AI Document Assistant', style: TextStyle(color: Colors.white, fontSize: 16.5, fontWeight: FontWeight.w900, height: 1.15, letterSpacing: -0.3)),
+        ),
+        const SizedBox(height: 6),
+        Text('Summarize, translate, explain and chat\nwith any document using the power of AI.', style: TextStyle(color: Colors.white.withOpacity(0.68), fontSize: 11.2, height: 1.5, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 10),
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          _AiPill(icon: Icons.article_rounded, label: 'Summarize', onTap: onSummarize),
+          _AiPill(icon: Icons.translate_rounded, label: 'Translate', onTap: onTranslate),
+          _AiPill(icon: Icons.edit_note_rounded, label: 'Rewrite', onTap: onRewrite),
+          _AiPill(icon: Icons.menu_book_rounded, label: 'Explain', onTap: onExplain),
+          _AiPill(icon: Icons.picture_as_pdf_rounded, label: 'Chat with PDF', onTap: onChatPdf),
+          _AiPill(icon: Icons.school_rounded, label: 'Homework Helper', onTap: onHomework),
+        ]),
+        const SizedBox(height: 12),
+        GestureDetector(
+          onTap: onStartChat,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFF3B82F6)]),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [BoxShadow(color: const Color(0xFF7C3AED).withOpacity(0.45), blurRadius: 16, offset: const Offset(0, 6))],
+              border: Border.all(color: Colors.white.withOpacity(0.14)),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Text('Start AI Chat', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
+              const SizedBox(width: 16),
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 8)]),
+                child: const Icon(Icons.arrow_forward_rounded, color: Color(0xFF7C3AED), size: 14),
+              ),
+            ]),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1039,11 +1187,9 @@ class _RobotIllustration extends StatelessWidget {
   const _RobotIllustration();
   @override
   Widget build(BuildContext context) {
-    // Pure Flutter vector robot to avoid external assets
     return SizedBox(
       height: 176,
       child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
-        // platform glow
         Positioned(
           bottom: 6,
           child: Container(
@@ -1056,22 +1202,17 @@ class _RobotIllustration extends StatelessWidget {
             ),
           ),
         ),
-        Positioned(bottom: 10, child: Container(width: 84, height: 28, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.7), width: 1.2))),
-        ),
+        Positioned(bottom: 10, child: Container(width: 84, height: 28, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.7), width: 1.2)))),
         Positioned(bottom: 16, child: Container(width: 66, height: 22, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFF3B82F6).withOpacity(0.65), width: 1)))),
-        // floating docs
         Positioned(left: 2, top: 18, child: _FloatingDoc(icon: Icons.picture_as_pdf_rounded, color: const Color(0xFFEF4444), label: 'PDF', rotation: -12)),
         Positioned(right: -2, top: 22, child: _FloatingDoc(icon: Icons.description_rounded, color: const Color(0xFF3B82F6), label: 'W', rotation: 10)),
         Positioned(right: 6, bottom: 56, child: _FloatingDoc(icon: Icons.description_rounded, color: const Color(0xFF8B94B8), label: '', rotation: 12, small: true)),
-        // robot body
         Column(mainAxisSize: MainAxisSize.min, children: [
-          // antenna
           Stack(clipBehavior: Clip.none, children: [
             Container(width: 2.5, height: 10, color: const Color(0xFFC4B5FD).withOpacity(0.9)),
             Positioned(top: -6, left: -4, child: Container(width: 10, height: 10, decoration: BoxDecoration(color: const Color(0xFF22D3EE), shape: BoxShape.circle, border: Border.all(color: Colors.white.withOpacity(0.8), width: 1), boxShadow: [BoxShadow(color: const Color(0xFF22D3EE).withOpacity(0.6), blurRadius: 8)]))),
           ]),
           const SizedBox(height: 2),
-          // head + body
           Container(
             width: 96,
             height: 96,
@@ -1085,7 +1226,6 @@ class _RobotIllustration extends StatelessWidget {
               ],
             ),
             child: Stack(children: [
-              // face plate
               Center(
                 child: Container(
                   width: 72,
@@ -1102,16 +1242,13 @@ class _RobotIllustration extends StatelessWidget {
                   ]),
                 ),
               ),
-              // cheek glow
               Positioned(bottom: 12, left: 14, child: Container(width: 10, height: 4, decoration: BoxDecoration(color: const Color(0xFF60A5FA).withOpacity(0.5), borderRadius: BorderRadius.circular(4)))),
               Positioned(bottom: 12, right: 14, child: Container(width: 10, height: 4, decoration: BoxDecoration(color: const Color(0xFF60A5FA).withOpacity(0.5), borderRadius: BorderRadius.circular(4)))),
-              // ears
               Positioned(left: -6, top: 34, child: Container(width: 12, height: 18, decoration: BoxDecoration(color: const Color(0xFFC4B5FD), borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.white.withOpacity(0.7))))),
               Positioned(right: -6, top: 34, child: Container(width: 12, height: 18, decoration: BoxDecoration(color: const Color(0xFFC4B5FD), borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.white.withOpacity(0.7))))),
             ]),
           ),
           const SizedBox(height: 6),
-          // body lights
           Container(
             width: 64,
             height: 46,
@@ -1214,7 +1351,7 @@ class _QuickCircleState extends State<_QuickCircle> with SingleTickerProviderSta
         child: Container(
           width: 74,
           margin: const EdgeInsets.only(right: 10),
-          child: Column(children: [
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
               width: 58,
               height: 58,
@@ -1228,7 +1365,6 @@ class _QuickCircleState extends State<_QuickCircle> with SingleTickerProviderSta
                 ],
               ),
               child: Stack(children: [
-                // inner highlight
                 Positioned.fill(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
@@ -1241,7 +1377,7 @@ class _QuickCircleState extends State<_QuickCircle> with SingleTickerProviderSta
               ]),
             ),
             const SizedBox(height: 7),
-            Text(widget.label, textAlign: TextAlign.center, style: TextStyle(color: Colors.white.withOpacity(0.92), fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: -0.1)),
+            Text(widget.label, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withOpacity(0.92), fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: -0.1)),
           ]),
         ),
       ),
@@ -1287,7 +1423,7 @@ class _SuggestionCardState extends State<_SuggestionCard> {
             boxShadow: [BoxShadow(color: widget.borderColor.withOpacity(0.18), blurRadius: 14, offset: const Offset(0, 6)), BoxShadow(color: Colors.black.withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 8))],
             gradient: LinearGradient(colors: [const Color(0xFF0F1330), const Color(0xFF0F1330).withOpacity(0.96)], begin: Alignment.topLeft, end: Alignment.bottomRight),
           ),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
             Container(
               width: 42,
               height: 42,
@@ -1320,11 +1456,17 @@ class _SectionHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
       child: Row(children: [
-        Text(title, style: const TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
-        const Spacer(),
+        Expanded(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.w800, letterSpacing: -0.2),
+          ),
+        ),
         GestureDetector(
           onTap: onTap,
-          child: Row(children: [
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
             Text(actionLabel, style: TextStyle(color: Colors.white.withOpacity(0.62), fontSize: 12, fontWeight: FontWeight.w600)),
             const SizedBox(width: 4),
             Icon(Icons.chevron_right_rounded, color: Colors.white.withOpacity(0.62), size: 16),
@@ -1342,7 +1484,7 @@ class _SeeAll extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Row(children: [
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
         Text('See All', style: TextStyle(color: Colors.white.withOpacity(0.62), fontSize: 12, fontWeight: FontWeight.w600)),
         const SizedBox(width: 2),
         Icon(Icons.chevron_right_rounded, color: Colors.white.withOpacity(0.62), size: 14),
@@ -1371,19 +1513,6 @@ class _RecentDocRowNew extends StatelessWidget {
 
   ({Color bg, Color fg, IconData icon, String label, String badge}) _type() {
     final n = doc.title.toLowerCase();
-    final sizeStr = doc.fileSizeBytes > 0 ? '${(doc.fileSizeBytes / (1024 * 1024)).toStringAsFixed(1)} MB' : '2.3 MB';
-    if (n.endsWith('.jpg') || n.endsWith('.jpeg') || n.endsWith('.png') || doc.filePaths.isNotEmpty) {
-      // for demo, treat image as jpg
-      final isDocx = n.contains('report') || n.endsWith('.docx');
-      if (isDocx) {
-        return (bg: const Color(0xFF1E3A8A), fg: const Color(0xFF60A5FA), icon: Icons.description_rounded, label: 'DOCX', badge: '');
-      }
-      // default: if title contains physics => pdf
-      if (n.contains('physics') || doc.pdfPath.isNotEmpty) {
-        // but keep variation: first doc is pdf
-      }
-    }
-    // infer
     if (n.endsWith('.docx') || n.endsWith('.doc')) {
       return (bg: const Color(0xFF1E3A8A), fg: const Color(0xFF60A5FA), icon: Icons.description_rounded, label: 'DOCX', badge: '');
     }
@@ -1413,7 +1542,6 @@ class _RecentDocRowNew extends StatelessWidget {
             boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.30), blurRadius: 14, offset: const Offset(0, 6))],
           ),
           child: Row(children: [
-            // thumb
             Container(
               width: 44,
               height: 44,
@@ -1426,7 +1554,7 @@ class _RecentDocRowNew extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                 Row(children: [
                   Expanded(child: Text(doc.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 13.2, fontWeight: FontWeight.w800, letterSpacing: -0.1))),
                   const SizedBox(width: 6),
@@ -1471,9 +1599,11 @@ class _ContinueWorkingCard extends StatelessWidget {
         border: Border.all(color: Colors.white.withOpacity(0.07)),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.32), blurRadius: 16, offset: const Offset(0, 8))],
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text('Continue Working', style: TextStyle(color: Colors.white.withOpacity(0.88), fontSize: 13.5, fontWeight: FontWeight.w800, letterSpacing: -0.1)),
+          Expanded(
+            child: Text('Continue Working', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withOpacity(0.88), fontSize: 13.5, fontWeight: FontWeight.w800, letterSpacing: -0.1)),
+          ),
           Icon(Icons.more_horiz_rounded, color: Colors.white.withOpacity(0.35), size: 16),
         ]),
         const SizedBox(height: 12),
@@ -1486,7 +1616,7 @@ class _ContinueWorkingCard extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Text(docTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 12.8, fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
               Stack(children: [
@@ -1505,8 +1635,9 @@ class _ContinueWorkingCard extends StatelessWidget {
               ]),
               const SizedBox(height: 4),
               Row(children: [
-                Text('Last opened 2 min ago', style: TextStyle(color: Colors.white.withOpacity(0.48), fontSize: 10.5, fontWeight: FontWeight.w500)),
-                const Spacer(),
+                Expanded(
+                  child: Text('Last opened 2 min ago', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withOpacity(0.48), fontSize: 10.5, fontWeight: FontWeight.w500)),
+                ),
                 Text('${(progress * 100).toInt()}%', style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 11, fontWeight: FontWeight.w800)),
               ]),
             ]),
@@ -1556,7 +1687,7 @@ class _CloudSyncCard extends StatelessWidget {
         border: Border.all(color: Colors.white.withOpacity(0.07)),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.32), blurRadius: 16, offset: const Offset(0, 8))],
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
           Container(
             width: 36,
@@ -1566,8 +1697,8 @@ class _CloudSyncCard extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           const Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Cloud Sync', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Text('Cloud Sync', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
               SizedBox(height: 2),
               Text('All files are backed up', style: TextStyle(color: Color(0xFF22C55E), fontSize: 11, fontWeight: FontWeight.w600)),
             ]),
@@ -1614,7 +1745,7 @@ class _CloudIcon extends StatelessWidget {
 }
 
 // ===========================================================================
-// Stats pills row (158 Documents etc)
+// Stats pills row
 // ===========================================================================
 
 class _StatsPillsRow extends StatelessWidget {
@@ -1658,8 +1789,8 @@ class _StatPill extends StatelessWidget {
         Container(width: 28, height: 28, decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(7), border: Border.all(color: color.withOpacity(0.35))), child: Icon(icon, color: color, size: 14)),
         const SizedBox(width: 7),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(value, style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w900, letterSpacing: -0.2)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w900, letterSpacing: -0.2)),
             const SizedBox(height: 1),
             Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withOpacity(0.50), fontSize: 9.5, fontWeight: FontWeight.w600)),
           ]),
@@ -1670,7 +1801,7 @@ class _StatPill extends StatelessWidget {
 }
 
 // ===========================================================================
-// Bottom 4 mini cards
+// Bottom 4 mini cards — flexible height, no fixed height
 // ===========================================================================
 
 class _TodayScansCard extends StatelessWidget {
@@ -1679,7 +1810,7 @@ class _TodayScansCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 92,
+      constraints: const BoxConstraints(minHeight: 92),
       padding: const EdgeInsets.fromLTRB(12, 12, 10, 10),
       decoration: BoxDecoration(
         color: const Color(0xFF140F2E).withOpacity(0.96),
@@ -1688,8 +1819,8 @@ class _TodayScansCard extends StatelessWidget {
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.28), blurRadius: 14, offset: const Offset(0, 6))],
       ),
       child: Stack(children: [
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Today\'s Scans', style: TextStyle(color: Colors.white.withOpacity(0.70), fontSize: 10.5, fontWeight: FontWeight.w600)),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Text("Today's Scans", style: TextStyle(color: Colors.white.withOpacity(0.70), fontSize: 10.5, fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
           Text('$count', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, height: 1)),
           const SizedBox(height: 2),
@@ -1735,7 +1866,7 @@ class _OcrAccuracyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 92,
+      constraints: const BoxConstraints(minHeight: 92),
       padding: const EdgeInsets.fromLTRB(12, 12, 10, 10),
       decoration: BoxDecoration(
         color: const Color(0xFF0F1F1A).withOpacity(0.96),
@@ -1745,7 +1876,7 @@ class _OcrAccuracyCard extends StatelessWidget {
       ),
       child: Row(children: [
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
             Text('OCR Accuracy', style: TextStyle(color: Colors.white.withOpacity(0.70), fontSize: 10.5, fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
             const Text('99%', style: TextStyle(color: Color(0xFF4ADE80), fontSize: 22, fontWeight: FontWeight.w900, height: 1)),
@@ -1771,7 +1902,7 @@ class _AiTokensCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 92,
+      constraints: const BoxConstraints(minHeight: 92),
       padding: const EdgeInsets.fromLTRB(12, 12, 10, 10),
       decoration: BoxDecoration(
         color: const Color(0xFF0F172E).withOpacity(0.96),
@@ -1781,7 +1912,7 @@ class _AiTokensCard extends StatelessWidget {
       ),
       child: Row(children: [
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
             Text('AI Tokens', style: TextStyle(color: Colors.white.withOpacity(0.70), fontSize: 10.5, fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
             const Text('Unlimited', style: TextStyle(color: Color(0xFF60A5FA), fontSize: 14, fontWeight: FontWeight.w900, height: 1)),
@@ -1800,7 +1931,7 @@ class _DailyTipCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 92,
+      constraints: const BoxConstraints(minHeight: 92),
       padding: const EdgeInsets.fromLTRB(12, 12, 10, 10),
       decoration: BoxDecoration(
         color: const Color(0xFF0F1330).withOpacity(0.96),
@@ -1808,7 +1939,7 @@ class _DailyTipCard extends StatelessWidget {
         border: Border.all(color: Colors.white.withOpacity(0.07)),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.28), blurRadius: 14, offset: const Offset(0, 6))],
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
           Container(width: 22, height: 22, decoration: BoxDecoration(color: const Color(0xFFfacc15).withOpacity(0.18), shape: BoxShape.circle, border: Border.all(color: const Color(0xFFfacc15).withOpacity(0.35))), child: const Icon(Icons.lightbulb_rounded, color: Color(0xFFfacc15), size: 13)),
           const SizedBox(width: 6),
@@ -1840,70 +1971,80 @@ class _PremiumUpgradeBanner extends StatelessWidget {
           border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.35)),
           boxShadow: [BoxShadow(color: const Color(0xFF8B5CF6).withOpacity(0.22), blurRadius: 20, offset: const Offset(0, 8)), BoxShadow(color: Colors.black.withOpacity(0.35), blurRadius: 16, offset: const Offset(0, 6))],
         ),
-        child: Row(children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFFFF8C00), Color(0xFFFFC857), Color(0xFFFFE08A)]),
-              borderRadius: BorderRadius.circular(11),
-              boxShadow: [BoxShadow(color: const Color(0xFFFFC857).withOpacity(0.35), blurRadius: 10)],
-            ),
-            child: const Icon(Icons.workspace_premium_rounded, color: Color(0xFF2A1B00), size: 24),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Text('Unlock Unlimited Power', style: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.2)),
-                const SizedBox(width: 4),
-                const Icon(Icons.auto_awesome_rounded, color: Color(0xFFC4B5FD), size: 10),
-              ]),
-              const SizedBox(height: 1),
-              Row(children: [
-                const Text('Scan', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: -0.3)),
-                ShaderMask(
-                  shaderCallback: (r) => const LinearGradient(colors: [Color(0xFFE879F9), Color(0xFF8B5CF6), Color(0xFF3B82F6)]).createShader(r),
-                  child: const Text('X', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
-                ),
-                const SizedBox(width: 6),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 360;
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF8C00), Color(0xFFFFC857)]), borderRadius: BorderRadius.circular(6)),
-                  child: const Text('PRO', style: TextStyle(color: Color(0xFF2A1B00), fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.6)),
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xFFFF8C00), Color(0xFFFFC857), Color(0xFFFFE08A)]),
+                    borderRadius: BorderRadius.circular(11),
+                    boxShadow: [BoxShadow(color: const Color(0xFFFFC857).withOpacity(0.35), blurRadius: 10)],
+                  ),
+                  child: const Icon(Icons.workspace_premium_rounded, color: Color(0xFF2A1B00), size: 24),
                 ),
-              ]),
-              const SizedBox(height: 4),
-              Wrap(spacing: 8, runSpacing: 4, children: const [
-                _MiniFeature(icon: Icons.all_inclusive_rounded, label: 'Unlimited AI'),
-                _MiniFeature(icon: Icons.text_snippet_rounded, label: 'Unlimited OCR'),
-                _MiniFeature(icon: Icons.cloud_rounded, label: 'Cloud\nBackup'),
-              ]),
-            ]),
-          ),
-          const SizedBox(width: 8),
-          // right stacked features + upgrade button
-          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            const Wrap(spacing: 8, children: [
-              _MiniFeature(icon: Icons.block_rounded, label: 'No Ads'),
-              _MiniFeature(icon: Icons.support_agent_rounded, label: 'Priority\nSupport'),
-            ]),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFF3B82F6)]),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: const Color(0xFF7C3AED).withOpacity(0.35), blurRadius: 10)],
-              ),
-              child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                Text('Upgrade Now', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
-                SizedBox(width: 4),
-                Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 13),
-              ]),
-            ),
-          ]),
-        ]),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                    Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text('Unlock Unlimited Power', style: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.2)),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.auto_awesome_rounded, color: Color(0xFFC4B5FD), size: 10),
+                    ]),
+                    const SizedBox(height: 1),
+                    Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Text('Scan', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: -0.3)),
+                      ShaderMask(
+                        shaderCallback: (r) => const LinearGradient(colors: [Color(0xFFE879F9), Color(0xFF8B5CF6), Color(0xFF3B82F6)]).createShader(r),
+                        child: const Text('X', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF8C00), Color(0xFFFFC857)]), borderRadius: BorderRadius.circular(6)),
+                        child: const Text('PRO', style: TextStyle(color: Color(0xFF2A1B00), fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.6)),
+                      ),
+                    ]),
+                    const SizedBox(height: 4),
+                    if (!isNarrow)
+                      Wrap(spacing: 8, runSpacing: 4, children: const [
+                        _MiniFeature(icon: Icons.all_inclusive_rounded, label: 'Unlimited AI'),
+                        _MiniFeature(icon: Icons.text_snippet_rounded, label: 'Unlimited OCR'),
+                        _MiniFeature(icon: Icons.cloud_rounded, label: 'Cloud\nBackup'),
+                      ]),
+                  ]),
+                ),
+                if (!isNarrow) ...[
+                  const SizedBox(width: 8),
+                  Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
+                    const Wrap(spacing: 8, children: [
+                      _MiniFeature(icon: Icons.block_rounded, label: 'No Ads'),
+                      _MiniFeature(icon: Icons.support_agent_rounded, label: 'Priority\nSupport'),
+                    ]),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFF3B82F6)]),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [BoxShadow(color: const Color(0xFF7C3AED).withOpacity(0.35), blurRadius: 10)],
+                      ),
+                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                        Text('Upgrade Now', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+                        SizedBox(width: 4),
+                        Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 13),
+                      ]),
+                    ),
+                  ]),
+                ],
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -1915,7 +2056,7 @@ class _MiniFeature extends StatelessWidget {
   const _MiniFeature({required this.icon, required this.label});
   @override
   Widget build(BuildContext context) {
-    return Column(children: [
+    return Column(mainAxisSize: MainAxisSize.min, children: [
       Container(
         width: 22,
         height: 22,

@@ -78,9 +78,12 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           st.isSelectionMode ? '${st.selectedDocIds.length} Selected' : (_filter == 'All' ? 'All Documents' : _filter),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.6),
                         ),
                         const SizedBox(height: 2),
@@ -90,6 +93,7 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
                   ),
                   if (st.isSelectionMode)
                     Flexible(
+                      flex: 0,
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         reverse: true,

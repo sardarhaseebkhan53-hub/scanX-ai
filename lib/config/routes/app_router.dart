@@ -11,6 +11,7 @@ import '../../features/pdf/presentation/screens/pdf_tools_screen.dart';
 import '../../features/qr/presentation/screens/qr_dashboard_screen.dart';
 import '../../features/qr/presentation/screens/qr_generator_screen.dart';
 import '../../features/qr/presentation/screens/qr_scanner_screen.dart';
+import '../../features/home/presentation/screens/notifications_screen.dart';
 import '../../features/qr/presentation/screens/wifi_qr_studio_screen.dart';
 import '../../features/scanner/presentation/screens/crop_screen.dart';
 import '../../features/scanner/presentation/screens/scan_preview_screen.dart';
@@ -131,6 +132,10 @@ class AppRouter {
       GoRoute(
         path: RouteNames.onboarding,
         builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.notifications,
+        builder: (context, state) => const NotificationsScreen(),
       ),
     ],
   );

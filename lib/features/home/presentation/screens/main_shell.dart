@@ -12,8 +12,7 @@ import '../../../settings/presentation/screens/profile_screen.dart';
 import 'all_documents_screen.dart';
 import 'home_screen.dart';
 
-/// Root shell — pixel-perfect match of reference:
-/// dark glass bottom bar with Home • Documents • [Scan] • AI Tools • Profile
+/// Root shell — dark glass bottom bar with Home • Documents • [Scan] • AI Tools • Profile
 /// plus floating AI assistant robot at bottom-right.
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
@@ -36,6 +35,10 @@ class _MainShellState extends ConsumerState<MainShell> {
         if (mounted) context.go(RouteNames.onboarding);
       });
     }
+
+    // Calculate safe bottom offset so FAB + bottom bar don't overlap content.
+    final mq = MediaQuery.of(context);
+    final bottomPadding = mq.padding.bottom;
 
     return Scaffold(
       extendBody: true,
@@ -60,10 +63,10 @@ class _MainShellState extends ConsumerState<MainShell> {
               const ProfileScreen(),
             ],
           ),
-          // floating AI assistant bot button — bottom right as in reference
+          // floating AI assistant bot button — bottom right
           Positioned(
             right: 12,
-            bottom: 92,
+            bottom: 92 + bottomPadding,
             child: _FloatingBotButton(onTap: () => context.push(RouteNames.aiAssistant)),
           ),
         ],
@@ -105,7 +108,6 @@ class _ScanFabState extends State<_ScanFab> with SingleTickerProviderStateMixin 
     return Stack(
       alignment: Alignment.center,
       children: [
-        // outer pulse rings
         AnimatedBuilder(
           animation: _pulse,
           builder: (context, _) {
@@ -148,7 +150,6 @@ class _ScanFabState extends State<_ScanFab> with SingleTickerProviderStateMixin 
               customBorder: const CircleBorder(),
               onTap: widget.onTap,
               child: Stack(alignment: Alignment.center, children: [
-                // inner highlight
                 Positioned.fill(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
@@ -162,7 +163,6 @@ class _ScanFabState extends State<_ScanFab> with SingleTickerProviderStateMixin 
                   ),
                 ),
                 const Icon(Icons.center_focus_strong_rounded, color: Colors.white, size: 30),
-                // subtle bracket corners hint
                 Positioned.fill(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -187,13 +187,9 @@ class _ScanBracketPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
     const d = 6.0;
-    // top left
     canvas.drawPath(Path()..moveTo(0, d)..lineTo(0, 0)..lineTo(d, 0), p);
-    // top right
     canvas.drawPath(Path()..moveTo(size.width - d, 0)..lineTo(size.width, 0)..lineTo(size.width, d), p);
-    // bottom left
     canvas.drawPath(Path()..moveTo(0, size.height - d)..lineTo(0, size.height)..lineTo(d, size.height), p);
-    // bottom right
     canvas.drawPath(Path()..moveTo(size.width - d, size.height)..lineTo(size.width, size.height)..lineTo(size.width, size.height - d), p);
   }
 
@@ -270,6 +266,7 @@ class _NavItem extends StatelessWidget {
           height: 66,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
@@ -313,7 +310,7 @@ class _NavItem extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Floating AI Bot Assistant Button (bottom-right as in reference)
+// Floating AI Bot Assistant Button
 // ---------------------------------------------------------------------------
 
 class _FloatingBotButton extends StatefulWidget {
@@ -357,7 +354,6 @@ class _FloatingBotButtonState extends State<_FloatingBotButton> with SingleTicke
             ],
           ),
           child: Stack(alignment: Alignment.center, children: [
-            // glow inner
             Container(
               width: 42,
               height: 42,
@@ -366,7 +362,6 @@ class _FloatingBotButtonState extends State<_FloatingBotButton> with SingleTicke
                 gradient: RadialGradient(colors: [const Color(0xFF8B5CF6).withOpacity(0.25), Colors.transparent]),
               ),
             ),
-            // bot face
             Container(
               width: 42,
               height: 42,
@@ -388,7 +383,6 @@ class _FloatingBotButtonState extends State<_FloatingBotButton> with SingleTicke
                 Positioned(top: 6, child: Container(width: 2, height: 4, decoration: BoxDecoration(color: const Color(0xFF8B5CF6).withOpacity(0.9), borderRadius: BorderRadius.circular(2)))),
               ]),
             ),
-            // online dot
             Positioned(
               right: 2,
               bottom: 2,
