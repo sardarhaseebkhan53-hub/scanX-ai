@@ -20,6 +20,11 @@ class AppConstants {
   static const String secureEncryptionKey = 'master_database_encryption_key';
   static const String secureOpenAIKey = 'openai_api_secret_key';
   static const String secureGeminiKey = 'gemini_api_secret_key';
+  static const String secureGroqKey = 'groq_api_secret_key';
+
+  // Groq AI endpoint (OpenAI-compatible, super-fast LLM inference)
+  static const String groqApiBaseUrl = 'https://api.groq.com/openai/v1';
+  static const String groqDefaultModel = 'llama-3.3-70b-versatile';
 
   // AI Default Prompts
   static const String aiSummarizePrompt =
@@ -34,7 +39,10 @@ class AppConstants {
   static const String annualSubscriptionId = 'scanx_ai_premium_annual';
   static const String lifetimePurchaseId = 'scanx_ai_premium_lifetime';
 
-  // AdMob Test Unit IDs (Production ready: replace with Google Play prod IDs)
+  // AdMob Test Unit IDs (Official Google sample IDs — safe for development.
+  // Replace with your own production AdMob unit IDs before releasing.)
+  static const String adMobAppId = 'ca-app-pub-3940256099942544~3347511713';
   static const String adMobBannerId = 'ca-app-pub-3940256099942544/6300978111';
   static const String adMobInterstitialId = 'ca-app-pub-3940256099942544/1033173712';
+  static const String adMobRewardedId = 'ca-app-pub-3940256099942544/5224354917';
 }

@@ -19,7 +19,9 @@ class AiToolsScreen extends ConsumerWidget {
     final settings = ref.watch(settingsProvider);
     final engine = settings.aiProvider == 'openai'
         ? 'OpenAI GPT-4o'
-        : (settings.aiProvider == 'device' ? 'On-Device AI' : 'Google Gemini');
+        : settings.aiProvider == 'groq'
+            ? 'Groq · Llama 3.3 70B'
+            : (settings.aiProvider == 'device' ? 'On-Device AI' : 'Google Gemini');
 
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,

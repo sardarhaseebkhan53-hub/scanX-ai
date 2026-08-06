@@ -194,26 +194,17 @@ class _ScanFabState extends State<_ScanFab> with SingleTickerProviderStateMixin 
           children: [
             // Outer glow pulse — softer opacity
             Container(
-              width: 78 + 14 * v,
-              height: 78 + 14 * v,
+              width: 70 + 10 * v,
+              height: 70 + 10 * v,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.neonPurple.withOpacity(0.14 - 0.10 * v),
-              ),
-            ),
-            // Inner glow pulse
-            Container(
-              width: 70 + 8 * v,
-              height: 70 + 8 * v,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.neonBlue.withOpacity(0.08 - 0.06 * v),
+                color: AppColors.neonPurple.withOpacity(0.12 - 0.08 * v),
               ),
             ),
             // Main button
             Container(
-              width: 62,
-              height: 62,
+              width: 58,
+              height: 58,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: const LinearGradient(
