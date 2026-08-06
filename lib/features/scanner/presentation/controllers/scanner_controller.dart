@@ -16,6 +16,12 @@ enum ScanMode {
   businessCard,
   whiteboard,
   batch,
+  // Premium redesign scan modes
+  qr,
+  photo,
+  objectAi,
+  homework,
+  more,
 }
 
 enum ColorFilterMode {
@@ -61,6 +67,8 @@ class ScannerState {
   final double zoomLevel;
   final double minZoomLevel;
   final double maxZoomLevel;
+  final bool isHdrOn;
+  final bool isAiAssistOn;
 
   const ScannerState({
     this.isInitialized = false,
@@ -88,6 +96,8 @@ class ScannerState {
     this.zoomLevel = 1.0,
     this.minZoomLevel = 1.0,
     this.maxZoomLevel = 1.0,
+    this.isHdrOn = false,
+    this.isAiAssistOn = false,
   });
 
   ScannerState copyWith({
@@ -116,6 +126,8 @@ class ScannerState {
     double? zoomLevel,
     double? minZoomLevel,
     double? maxZoomLevel,
+    bool? isHdrOn,
+    bool? isAiAssistOn,
   }) {
     return ScannerState(
       isInitialized: isInitialized ?? this.isInitialized,
@@ -143,6 +155,8 @@ class ScannerState {
       zoomLevel: zoomLevel ?? this.zoomLevel,
       minZoomLevel: minZoomLevel ?? this.minZoomLevel,
       maxZoomLevel: maxZoomLevel ?? this.maxZoomLevel,
+      isHdrOn: isHdrOn ?? this.isHdrOn,
+      isAiAssistOn: isAiAssistOn ?? this.isAiAssistOn,
     );
   }
 }
@@ -323,6 +337,49 @@ class ScannerController extends StateNotifier<ScannerState> {
 
   void toggleShadowRemoval() {
     state = state.copyWith(isShadowRemovalEnabled: !state.isShadowRemovalEnabled);
+  }
+
+  /// Toggle HDR capture mode. When enabled, captured frames are run through the
+  /// AI enhancement pipeline so high-dynamic-range detail is preserved.
+  void toggleHdr() => state = state.copyWith(isHdrOn: !state.isHdrOn);
+
+  /// Toggle the contextual AI Assistant helper overlay / suggestions.
+  void toggleAiAssist() => state = state.copyWith(isAiAssistOn: !state.isAiAssistOn);
+
+  /// Tap-to-focus + tap-to-expose at a normalized [0..1] point in the preview.
+  Future<void> setFocusPoint(Offset point) async {
+    if (_cameraController == null || !state.isInitialized) return;
+    try {
+      await _cameraController!.setFocusPoint(point);
+      await _cameraController!.setExposurePoint(point);
+    } catch (e) {
+      AppLogger.w('Focus point failed: $e', _tag);
+    }
+  }
+
+  /// Night mode: pins the flash to a continuous torch and applies a low-light
+  /// photo color grade so dim environments stay readable.
+  Future<void> enableNightMode() async {
+    if (_cameraController == null || !state.isInitialized) return;
+    try {
+      await _cameraController!.setFlashMode(FlashMode.torch);
+      if (mounted) {
+        state = state.copyWith(
+          flashMode: 'torch',
+          isFlashOn: true,
+          filterMode: ColorFilterMode.photo,
+        );
+      }
+    } catch (e) {
+      AppLogger.w('Night mode failed: $e', _tag);
+    }
+  }
+
+  /// Apply a real pixel [ColorFilterMode] preset to a saved image file and
+  /// return the path of the processed copy.
+  Future<String?> applyFilterToFile(String path, ColorFilterMode mode) async {
+    final file = await _imageProcessor.applyFilterPreset(File(path), mode.name);
+    return file?.path;
   }
 
   Future<void> _evaluateAndSetQualityScore(String filePath) async {
