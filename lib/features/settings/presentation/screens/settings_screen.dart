@@ -68,7 +68,9 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: 20),
 
               _SectionLabel(title: 'General', icon: Icons.tune_rounded),
-              _LuxRow(title: 'Appearance', subtitle: 'Dark Mode • ${state.themeMode.toUpperCase()}', icon: Icons.palette_rounded, gradient: AppColors.goldGradient, trailing: DropdownButton<String>(value: state.themeMode, underline: const SizedBox(), dropdownColor: const Color(0xFF151D3F), style: const TextStyle(color: Colors.white, fontSize: 13), items: const [DropdownMenuItem(value: 'system', child: Text('System')), DropdownMenuItem(value: 'light', child: Text('Light')), DropdownMenuItem(value: 'dark', child: Text('Dark'))], onChanged: (v) { if (v != null) controller.setThemeMode(v); })),
+              _LuxRow(title: 'Appearance', subtitle: 'Dark Mode • ${state.themeMode.toUpperCase()}', icon: Icons.palette_rounded, gradient: AppColors.goldGradient, trailing: Flexible(
+                child: DropdownButton<String>(value: state.themeMode, underline: const SizedBox(), dropdownColor: const Color(0xFF151D3F), style: const TextStyle(color: Colors.white, fontSize: 13), isDense: true, items: const [DropdownMenuItem(value: 'system', child: Text('System')), DropdownMenuItem(value: 'light', child: Text('Light')), DropdownMenuItem(value: 'dark', child: Text('Dark'))], onChanged: (v) { if (v != null) controller.setThemeMode(v); }),
+              )),
               _LuxRow(title: 'Language', subtitle: 'English (${state.languageCode.toUpperCase()})', icon: Icons.language_rounded, gradient: AppColors.scannerGradient, onTap: () => _showLanguagePicker(context, controller)),
               _LuxRow(title: 'Cloud Backup & Sync', subtitle: 'Firebase • Drive • Dropbox', icon: Icons.cloud_done_rounded, gradient: AppColors.cyanGradient, onTap: () => context.push(RouteNames.cloudSync)),
               _LuxRow(title: 'Security & Privacy', subtitle: 'AES-256 • Biometrics', icon: Icons.security_rounded, gradient: AppColors.purpleGradient, onTap: () => context.push(RouteNames.securitySettings)),

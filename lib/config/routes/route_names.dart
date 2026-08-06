@@ -20,4 +20,5 @@ class RouteNames {
   static const String premiumPaywall = '/premium-paywall';
   static const String legalPolicy = '/legal-policy';
   static const String onboarding = '/onboarding';
+  static const String notifications = '/notifications';
 }

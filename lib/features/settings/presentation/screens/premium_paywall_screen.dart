@@ -161,11 +161,11 @@ class _PremiumPaywallScreenState extends State<PremiumPaywallScreen> {
                         ),
                         const SizedBox(height: 22),
                         Row(children: [
-                          _PricingCard(index: 0, selected: _selectedPlanIndex, onTap: (i) => setState(() => _selectedPlanIndex = i), title: 'Monthly', price: '\$4.99/mo', sub: 'Billed monthly'),
+                          Expanded(child: _PricingCard(index: 0, selected: _selectedPlanIndex, onTap: (i) => setState(() => _selectedPlanIndex = i), title: 'Monthly', price: '\$4.99/mo', sub: 'Billed monthly')),
                           const SizedBox(width: 10),
-                          _PricingCard(index: 1, selected: _selectedPlanIndex, onTap: (i) => setState(() => _selectedPlanIndex = i), title: 'Yearly', price: '\$29.99/yr', sub: 'Save 50%', badge: 'POPULAR'),
+                          Expanded(child: _PricingCard(index: 1, selected: _selectedPlanIndex, onTap: (i) => setState(() => _selectedPlanIndex = i), title: 'Yearly', price: '\$29.99/yr', sub: 'Save 50%', badge: 'POPULAR')),
                           const SizedBox(width: 10),
-                          _PricingCard(index: 2, selected: _selectedPlanIndex, onTap: (i) => setState(() => _selectedPlanIndex = i), title: 'Lifetime', price: '\$79.99', sub: 'One-time'),
+                          Expanded(child: _PricingCard(index: 2, selected: _selectedPlanIndex, onTap: (i) => setState(() => _selectedPlanIndex = i), title: 'Lifetime', price: '\$79.99', sub: 'One-time')),
                         ]),
                         const SizedBox(height: 24),
                         GestureDetector(

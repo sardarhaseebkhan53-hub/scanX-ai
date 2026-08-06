@@ -111,14 +111,16 @@ class ProfileScreen extends ConsumerWidget {
               },
             ),
             const SizedBox(height: 14),
-            Row(
-              children: [
-                _StatCard(value: '${homeState.documents.length}', label: 'Documents', icon: Icons.description_rounded, color: AppColors.neonBlue),
-                const SizedBox(width: 10),
-                _StatCard(value: '$favs', label: 'Favorites', icon: Icons.favorite_rounded, color: AppColors.neonPink),
-                const SizedBox(width: 10),
-                _StatCard(value: '$locked', label: 'In Vault', icon: Icons.lock_rounded, color: AppColors.neonPurple),
-              ],
+            IntrinsicHeight(
+              child: Row(
+                children: [
+                  _StatCard(value: '${homeState.documents.length}', label: 'Documents', icon: Icons.description_rounded, color: AppColors.neonBlue),
+                  const SizedBox(width: 10),
+                  _StatCard(value: '$favs', label: 'Favorites', icon: Icons.favorite_rounded, color: AppColors.neonPink),
+                  const SizedBox(width: 10),
+                  _StatCard(value: '$locked', label: 'In Vault', icon: Icons.lock_rounded, color: AppColors.neonPurple),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
             const Text('PREFERENCES', style: TextStyle(color: AppColors.textTertiaryDark, fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
