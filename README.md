@@ -26,7 +26,16 @@ cd /home/user/scanx_ai
 flutter pub get
 ```
 
-### 2. Connect Your Mobile Device & Launch
+### 2. (Optional) Add Your AI API Key
+The project builds and runs **without** any API key using the on-device AI
+fallback. To enable the cloud Groq AI provider, pass your key at build time
+(nothing is written to disk and no file needs to be copied):
+```bash
+# Get a free key at https://console.groq.com/keys
+flutter run --dart-define=GROQ_API_KEY=your_real_key_here
+```
+
+### 3. Connect Your Mobile Device & Launch
 ```bash
 # Run in debug mode on your connected mobile device
 flutter run
