@@ -30,8 +30,9 @@ class HomeScreen extends ConsumerStatefulWidget {
   final VoidCallback? onSeeAllDocs;
   final VoidCallback? onSeeAllTools;
   final void Function(String category)? onOpenCategory;
+  final ScrollController? scrollController;
 
-  const HomeScreen({super.key, this.onSeeAllDocs, this.onSeeAllTools, this.onOpenCategory});
+  const HomeScreen({super.key, this.onSeeAllDocs, this.onSeeAllTools, this.onOpenCategory, this.scrollController});
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
@@ -90,6 +91,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
             backgroundColor: const Color(0xFF12172E),
             onRefresh: () => homeCtrl.loadData(),
             child: CustomScrollView(
+              controller: widget.scrollController,
               physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
               slivers: [
                 // ---- Header: Greeting + Pro + Bell + Avatar ----
@@ -159,8 +161,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
                           child: Wrap(
-                            spacing: 0,
-                            runSpacing: 16,
+                            spacing: 8,
+                            runSpacing: 12,
                             alignment: WrapAlignment.spaceEvenly,
                             children: [
                               _QuickCircle(icon: Icons.document_scanner_rounded, label: 'Scan', color: const Color(0xFFA855F7), glow: const Color(0xFFA855F7), onTap: () => context.push(RouteNames.scanner)),
@@ -1057,7 +1059,7 @@ class _AiAssistantCard extends StatelessWidget {
           Positioned(top: 78, left: 164, child: _Star(size: 5, opacity: 0.7)),
           Positioned(bottom: 34, left: 198, child: _Star(size: 9, opacity: 0.9)),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+            padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final isNarrow = constraints.maxWidth < 340;
@@ -1194,8 +1196,8 @@ class _RobotIllustration extends StatelessWidget {
         return FittedBox(
           fit: BoxFit.contain,
           child: SizedBox(
-            height: 176,
-            width: 176,
+            height: 152,
+            width: 152,
             child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
               Positioned(
                 bottom: 6,

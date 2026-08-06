@@ -17,7 +17,8 @@ import '../widgets/folder_card.dart';
 /// archive and the trash, with search, sorting and batch operations.
 class AllDocumentsScreen extends ConsumerStatefulWidget {
   final String? initialFilter;
-  const AllDocumentsScreen({super.key, this.initialFilter});
+  final ScrollController? scrollController;
+  const AllDocumentsScreen({super.key, this.initialFilter, this.scrollController});
 
   @override
   ConsumerState<AllDocumentsScreen> createState() => _AllDocumentsScreenState();
@@ -187,6 +188,7 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
                 backgroundColor: AppColors.surfaceDark,
                 onRefresh: () => controller.loadData(),
                 child: CustomScrollView(
+                  controller: widget.scrollController,
                   physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                   slivers: [
                     if (showFolders) ...[
