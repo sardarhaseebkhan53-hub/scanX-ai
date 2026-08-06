@@ -42,8 +42,8 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Local secrets — NEVER commit API keys
-lib/config/env.dart
+# Local secrets — keep real keys out of source control.
+# API keys are provided at build time via --dart-define (see lib/config/env.dart).
 android/key.properties
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
