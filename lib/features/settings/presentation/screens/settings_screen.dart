@@ -77,7 +77,7 @@ class SettingsScreen extends ConsumerWidget {
 
               const SizedBox(height: 16),
               _SectionLabel(title: 'AI & Scanner', icon: Icons.auto_awesome_rounded),
-              _LuxRow(title: 'AI Engine', subtitle: 'Provider: ${state.aiProvider.toUpperCase()}', icon: Icons.smart_toy_rounded, gradient: AppColors.aiGradient, onTap: () => _showApiKeyDialog(context, controller, state.aiProvider)),
+              _LuxRow(title: 'AI Engine', subtitle: 'Provider: ${_providerLabel(state.aiProvider)}', icon: Icons.smart_toy_rounded, gradient: AppColors.aiGradient, onTap: () => _showProviderPicker(context, controller, state.aiProvider)),
               _LuxRow(title: 'Watermark Studio', subtitle: state.defaultWatermarkConfig.isEnabled ? 'Active • ${state.defaultWatermarkConfig.position}' : 'Disabled', icon: Icons.water_drop_rounded, gradient: AppColors.cyanGradient, onTap: () {
                 WatermarkStudioModal.show(context, initialConfig: state.defaultWatermarkConfig, onApply: (config) { controller.updateWatermarkConfig(config); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Watermark updated!'), backgroundColor: Color(0xFF151D3F))); });
               }),
@@ -122,6 +122,57 @@ class SettingsScreen extends ConsumerWidget {
   static void _showLanguagePicker(BuildContext context, SettingsController controller) {
     final langs = {'en': 'English', 'es': 'Español', 'fr': 'Français', 'de': 'Deutsch', 'ur': 'Urdu'};
     showModalBottomSheet(context: context, backgroundColor: AppColors.surfaceDark, shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusXl))), builder: (ctx) => Padding(padding: const EdgeInsets.all(20), child: Column(mainAxisSize: MainAxisSize.min, children: langs.entries.map((e) => ListTile(title: Text(e.value, style: const TextStyle(color: Colors.white)), onTap: () { controller.setLanguage(e.key); Navigator.pop(ctx); })).toList())));
+  }
+
+  static String _providerLabel(String provider) {
+    switch (provider) {
+      case 'groq':
+        return 'Groq (Llama 3.3 70B)';
+      case 'openai':
+        return 'OpenAI GPT-4o';
+      case 'device':
+        return 'On-Device AI';
+      case 'gemini':
+      default:
+        return 'Google Gemini';
+    }
+  }
+
+  static void _showProviderPicker(BuildContext context, SettingsController controller, String current) {
+    final providers = {
+      'groq': 'Groq · Llama 3.3 70B (fast)',
+      'gemini': 'Google Gemini 1.5 Flash',
+      'openai': 'OpenAI GPT-4o Mini',
+      'device': 'On-Device (offline)',
+    };
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surfaceDark,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusXl))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Select AI Engine', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+            const SizedBox(height: 12),
+            ...providers.entries.map((e) => RadioListTile<String>(
+                  value: e.key,
+                  groupValue: current,
+                  activeColor: AppColors.primaryDark,
+                  title: Text(e.value, style: const TextStyle(color: Colors.white, fontSize: 13)),
+                  onChanged: (v) {
+                    if (v != null) {
+                      controller.setAIProvider(v);
+                      Navigator.pop(ctx);
+                      if (v != 'device') _showApiKeyDialog(context, controller, v);
+                    }
+                  },
+                )),
+          ],
+        ),
+      ),
+    );
   }
 
   static void _showApiKeyDialog(BuildContext context, SettingsController controller, String provider) {

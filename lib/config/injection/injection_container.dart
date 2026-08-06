@@ -40,10 +40,20 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<OCRService>(() => OCRService());
   sl.registerLazySingleton<PDFService>(() => PDFService());
 
-  sl.registerLazySingleton<AIService>(() => PluggableAIService(
-        dio: sl<Dio>(),
-        provider: 'gemini',
-      ));
+  // AI engine defaults to Groq (super-fast OpenAI-compatible inference).
+  // The API key is read from the device secure storage at resolution time.
+  sl.registerLazySingleton<AIService>(() {
+    final secureStorage = sl<SecureStorageService>();
+    final service = PluggableAIService(dio: sl<Dio>(), provider: 'groq');
+    // Best-effort: load the stored Groq key so AI features work after restart.
+    // If the user picks another provider in Settings that wins at runtime.
+    secureStorage.getAIKey('groq').then((key) {
+      if (key != null && key.isNotEmpty) {
+        service.setProvider('groq', apiKey: key);
+      }
+    });
+    return service;
+  });
 
   sl.registerLazySingleton<CloudSyncService>(
       () => CloudSyncService(localStorage: sl<LocalStorageService>()));

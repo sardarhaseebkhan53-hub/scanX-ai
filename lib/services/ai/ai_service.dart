@@ -14,7 +14,7 @@ abstract class AIService {
 
 class PluggableAIService implements AIService {
   final Dio _dio;
-  String _provider; // 'gemini' or 'openai'
+  String _provider; // 'gemini', 'openai', or 'groq'
   String? _apiKey;
 
   PluggableAIService({required Dio dio, String provider = 'gemini', String? apiKey})
@@ -24,7 +24,7 @@ class PluggableAIService implements AIService {
 
   void setProvider(String provider, {String? apiKey}) {
     _provider = provider;
-    if (apiKey != null) _apiKey = apiKey;
+    if (apiKey != null && apiKey.isNotEmpty) _apiKey = apiKey;
     AppLogger.i('AI Provider switched to: $_provider', 'PluggableAIService');
   }
 
@@ -43,6 +43,8 @@ class PluggableAIService implements AIService {
     try {
       if (_provider == 'gemini') {
         return await _callGemini(ocrText, promptType, targetLanguage);
+      } else if (_provider == 'groq') {
+        return await _callGroq(ocrText, promptType, targetLanguage);
       } else {
         return await _callOpenAI(ocrText, promptType, targetLanguage);
       }
@@ -108,6 +110,46 @@ class PluggableAIService implements AIService {
     return _parseAIResponse(rawText, promptType);
   }
 
+  /// Groq — OpenAI-compatible Chat Completions endpoint running Llama 3.3 70B
+  /// at very high speed. Docs: https://console.groq.com/docs/api-reference
+  Future<AIAnalysisResult> _callGroq(
+    String ocrText,
+    String promptType,
+    String? targetLanguage,
+  ) async {
+    final endpoint = '${AppConstants.groqApiBaseUrl}/chat/completions';
+    final prompt = _buildPrompt(ocrText, promptType, targetLanguage);
+    final wantsJson =
+        promptType == 'receipt' || promptType == 'invoice' || promptType == 'business_card';
+
+    final response = await _dio.post(
+      endpoint,
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
+          'Content-Type': 'application/json',
+        },
+      ),
+      data: {
+        'model': AppConstants.groqDefaultModel,
+        'messages': [
+          {
+            'role': 'system',
+            'content': wantsJson
+                ? 'You are ScanX AI, an expert document intelligence assistant. Always respond with valid JSON only — no markdown fences or extra commentary.'
+                : 'You are ScanX AI, an expert document intelligence assistant. Respond concisely and professionally.',
+          },
+          {'role': 'user', 'content': prompt},
+        ],
+        'temperature': 0.2,
+        if (wantsJson) 'response_format': {'type': 'json_object'},
+      },
+    );
+
+    final rawText = response.data['choices']?[0]?['message']?['content'] ?? '';
+    return _parseAIResponse(rawText, promptType);
+  }
+
   String _buildPrompt(String ocrText, String promptType, String? targetLanguage) {
     switch (promptType) {
       case 'summary':
@@ -144,8 +186,9 @@ class PluggableAIService implements AIService {
       }
     }
 
+    final isChat = promptType == 'chat';
     return AIAnalysisResult(
-      summary: promptType == 'summary' ? rawText : null,
+      summary: (promptType == 'summary' || isChat) ? rawText : null,
       explanation: (promptType == 'explain' || promptType == 'audit_risks' || promptType == 'action_items')
           ? rawText
           : null,
@@ -324,6 +367,10 @@ class PluggableAIService implements AIService {
         final res = await _callGemini(
             'Document:\n$documentText\n\nUser Question: $userMessage', 'chat', null);
         return res.summary ?? 'Response generated from Gemini.';
+      } else if (_provider == 'groq') {
+        final res = await _callGroq(
+            'Document:\n$documentText\n\nUser Question: $userMessage', 'chat', null);
+        return res.summary ?? 'Response generated from Groq.';
       } else {
         final res = await _callOpenAI(
             'Document:\n$documentText\n\nUser Question: $userMessage', 'chat', null);

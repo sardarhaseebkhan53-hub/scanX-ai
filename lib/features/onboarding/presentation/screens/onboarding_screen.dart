@@ -160,51 +160,69 @@ class _Slide extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(width: 210, height: 210, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [gradient.colors.first.withOpacity(0.28), Colors.transparent]))),
-              Container(
-                width: 150,
-                height: 150,
-                decoration: BoxDecoration(
-                  gradient: gradient,
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: gradient.colors.first.withOpacity(0.5), blurRadius: 34, offset: const Offset(0, 12))],
-                  border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.4),
-                ),
-                child: Icon(icon, color: Colors.white, size: 64),
-              ),
-            ],
-          ),
-          const SizedBox(height: 40),
-          Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900, height: 1.12, letterSpacing: -0.8)),
-          const SizedBox(height: 16),
-          Text(subtitle, textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 13.5, height: 1.6)),
-          const SizedBox(height: 22),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
-            children: chips
-                .map((c) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: gradient.colors.first.withOpacity(0.4)),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Scale the hero circle down on short/small screens to prevent the
+        // "RenderFlex overflowed on the bottom" layout assertion.
+        final heroSize = (constraints.maxHeight * 0.32).clamp(120.0, 150.0);
+        final glowSize = heroSize * 1.4;
+        final iconSize = heroSize * 0.43;
+        final titleSize = (constraints.maxHeight < 520) ? 25.0 : 30.0;
+
+        return SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(width: glowSize, height: glowSize, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [gradient.colors.first.withOpacity(0.28), Colors.transparent]))),
+                      Container(
+                        width: heroSize,
+                        height: heroSize,
+                        decoration: BoxDecoration(
+                          gradient: gradient,
+                          shape: BoxShape.circle,
+                          boxShadow: [BoxShadow(color: gradient.colors.first.withOpacity(0.5), blurRadius: 34, offset: const Offset(0, 12))],
+                          border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.4),
+                        ),
+                        child: Icon(icon, color: Colors.white, size: iconSize),
                       ),
-                      child: Text(c, style: TextStyle(color: gradient.colors.first, fontSize: 10.5, fontWeight: FontWeight.w700)),
-                    ))
-                .toList(),
+                    ],
+                  ),
+                  SizedBox(height: (constraints.maxHeight * 0.06).clamp(16.0, 40.0)),
+                  Text(title, textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: titleSize, fontWeight: FontWeight.w900, height: 1.12, letterSpacing: -0.8)),
+                  const SizedBox(height: 16),
+                  Text(subtitle, textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 13.5, height: 1.6)),
+                  const SizedBox(height: 22),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: chips
+                        .map((c) => Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: gradient.colors.first.withOpacity(0.4)),
+                              ),
+                              child: Text(c, style: TextStyle(color: gradient.colors.first, fontSize: 10.5, fontWeight: FontWeight.w700)),
+                            ))
+                        .toList(),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

@@ -43,13 +43,18 @@ class SettingsController extends StateNotifier<AppSettings> {
     state = updated;
     await _localStorage.saveSettings(updated);
 
+    // Resolve the API key: explicit argument wins, otherwise read whatever is
+    // already securely stored for this provider.
+    String? resolvedKey = apiKey;
     if (apiKey != null && apiKey.isNotEmpty) {
       await _secureStorage.saveAIKey(provider, apiKey);
+    } else {
+      resolvedKey = await _secureStorage.getAIKey(provider);
     }
 
     final aiService = sl<AIService>();
     if (aiService is PluggableAIService) {
-      aiService.setProvider(provider, apiKey: apiKey);
+      aiService.setProvider(provider, apiKey: resolvedKey);
     }
   }
 

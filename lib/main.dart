@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'config/env.dart';
 import 'config/firebase/firebase_config.dart';
 import 'config/injection/injection_container.dart';
 import 'config/routes/app_router.dart';
@@ -8,6 +9,8 @@ import 'core/constants/app_constants.dart';
 import 'core/logger/app_logger.dart';
 import 'core/theme/app_theme.dart';
 import 'features/settings/presentation/controllers/settings_controller.dart';
+import 'services/ai/ai_service.dart';
+import 'services/storage/secure_storage_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +30,24 @@ void main() async {
     await initDependencies();
   } catch (e) {
     AppLogger.e('Fatal dependency initialization error: $e', tag: 'Main');
+  }
+
+  try {
+    // Provision the Groq API key (from local env.dart) into secure storage on
+    // first run. The key is then read from the hardware-backed keystore.
+    final secureStorage = sl<SecureStorageService>();
+    final existing = await secureStorage.getAIKey('groq');
+    if ((existing == null || existing.isEmpty) && EnvSecrets.groqApiKey.isNotEmpty) {
+      await secureStorage.saveAIKey('groq', EnvSecrets.groqApiKey);
+      AppLogger.i('Groq API key provisioned to secure storage.', 'Main');
+    }
+    final aiService = sl<AIService>();
+    final key = await secureStorage.getAIKey('groq');
+    if (aiService is PluggableAIService && key != null && key.isNotEmpty) {
+      aiService.setProvider('groq', apiKey: key);
+    }
+  } catch (e) {
+    AppLogger.w('Could not provision Groq key to secure storage: $e', 'Main');
   }
 
   AppLogger.i('Starting ScanX AI Application v${AppConstants.appVersion}', 'Main');

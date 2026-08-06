@@ -59,13 +59,27 @@ class SecureStorageService {
     return val == 'true';
   }
 
+  static String _storageKeyForProvider(String provider) {
+    switch (provider) {
+      case 'gemini':
+        return AppConstants.secureGeminiKey;
+      case 'groq':
+        return AppConstants.secureGroqKey;
+      case 'openai':
+      default:
+        return AppConstants.secureOpenAIKey;
+    }
+  }
+
   Future<void> saveAIKey(String provider, String apiKey) async {
-    final key = provider == 'gemini' ? AppConstants.secureGeminiKey : AppConstants.secureOpenAIKey;
-    await saveSecret(key, apiKey);
+    await saveSecret(_storageKeyForProvider(provider), apiKey);
   }
 
   Future<String?> getAIKey(String provider) async {
-    final key = provider == 'gemini' ? AppConstants.secureGeminiKey : AppConstants.secureOpenAIKey;
-    return await readSecret(key);
+    return await readSecret(_storageKeyForProvider(provider));
+  }
+
+  Future<void> deleteAIKey(String provider) async {
+    await deleteSecret(_storageKeyForProvider(provider));
   }
 }
