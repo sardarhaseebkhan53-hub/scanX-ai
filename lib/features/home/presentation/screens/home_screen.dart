@@ -1279,6 +1279,9 @@ class _RobotIllustration extends StatelessWidget {
           ),
         ]),
       ]),
+      ),
+    );
+      },
     );
   }
 }
