@@ -37,7 +37,7 @@ const List<_ScanModeMeta> _modeMetas = [
   _ScanModeMeta(ScanMode.objectAi, 'Object AI', Icons.auto_awesome_rounded),
   _ScanModeMeta(ScanMode.homework, 'Homework', Icons.school_rounded),
   _ScanModeMeta(ScanMode.businessCard, 'Business', Icons.contact_phone_rounded),
-  _ScanModeMeta(ScanMode.whiteboard, 'Whiteboard', Icons.whiteboard_rounded),
+  _ScanModeMeta(ScanMode.whiteboard, 'Whiteboard', Icons.draw_rounded),
   _ScanModeMeta(ScanMode.more, 'More', Icons.grid_view_rounded),
 ];
 
