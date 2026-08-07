@@ -271,10 +271,6 @@ class ScannerController extends StateNotifier<ScannerState> {
           nextMode = 'on';
           cameraFlash = FlashMode.always;
           break;
-        case 'on':
-          nextMode = 'torch';
-          cameraFlash = FlashMode.torch;
-          break;
         default:
           nextMode = 'off';
           cameraFlash = FlashMode.off;
@@ -449,6 +445,13 @@ class ScannerController extends StateNotifier<ScannerState> {
     } catch (e) {
       AppLogger.e('Gallery import failed: $e', tag: _tag);
     }
+  }
+
+  void replaceLastCapturedImage(String path) {
+    if (state.capturedImages.isEmpty) return;
+    final updatedList = List<String>.from(state.capturedImages);
+    updatedList[updatedList.length - 1] = path;
+    state = state.copyWith(capturedImages: updatedList);
   }
 
   void removeImageAt(int index) {
