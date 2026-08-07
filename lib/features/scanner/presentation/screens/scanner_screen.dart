@@ -227,14 +227,17 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       return;
     }
 
+    // HDR + deblur is now handled inside capturePhoto().
     final path = await ctrl.capturePhoto();
     if (path == null || !context.mounted) return;
 
     String finalPath = path;
-    final shouldEnhance = state.isHdrOn ||
-        state.isShadowRemovalEnabled ||
-        state.filterMode != ColorFilterMode.original;
-    if (shouldEnhance) {
+
+    // Apply additional colour / shadow filter on top of HDR (if not already HDR)
+    final shouldFilter = !state.isHdrOn &&
+        (state.isShadowRemovalEnabled ||
+            state.filterMode != ColorFilterMode.original);
+    if (shouldFilter) {
       final enhanced = await ctrl.applyFilterToFile(path, state.filterMode);
       if (enhanced != null && context.mounted) {
         finalPath = enhanced;
@@ -244,7 +247,12 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
 
     if (!context.mounted) return;
     if (state.currentMode == ScanMode.batch) {
-      _showSnack('Page ${ref.read(scannerProvider).capturedImages.length} captured. Tap preview to reorder/export.');
+      final postState = ref.read(scannerProvider);
+      String msg = 'Page ${postState.capturedImages.length} captured.';
+      if (postState.isHdrOn) msg += ' HDR ✓';
+      if (postState.isAutoDeblurOn && postState.isBlurDetected) msg += ' Deblur ✓';
+      msg += ' Tap preview to export.';
+      _showSnack(msg);
       return;
     }
     context.push(RouteNames.crop, extra: finalPath);
@@ -380,8 +388,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
             },
           ),
           _SheetSwitch(
-            icon: Icons.hd_outlined,
-            title: 'HD scan quality',
+            icon: Icons.hdr_on_rounded,
+            title: 'HDR tone mapping',
             value: s.isHdrOn,
             onChanged: (_) {
               ctrl.toggleHdr();
@@ -510,6 +518,15 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
               Navigator.pop(context);
             },
           ),
+          _SheetSwitch(
+            icon: Icons.blur_off_rounded,
+            title: 'Auto blur correction',
+            value: s.isAutoDeblurOn,
+            onChanged: (_) {
+              ctrl.toggleAutoDeblur();
+              Navigator.pop(context);
+            },
+          ),
           _SheetAction(
             icon: Icons.nightlight_outlined,
             title: 'Night / torch mode',
@@ -619,18 +636,33 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
               },
             ),
           ),
+          // Status indicators (blur/HDR/deblur)
           Positioned(
             left: 0,
             right: 0,
             top: mq.size.height * .42,
             child: IgnorePointer(
               child: Center(
-                child: _StatusPill(
-                  icon: s.isBlurDetected ? Icons.blur_on_rounded : Icons.check_circle_outline,
-                  label: s.isBlurDetected
-                      ? 'Blur detected • Hold steady'
-                      : 'Document detected • Auto crop ready',
-                  danger: s.isBlurDetected,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _StatusPill(
+                      icon: s.isBlurDetected
+                          ? Icons.blur_on_rounded
+                          : (s.isHdrOn ? Icons.hdr_on_rounded : Icons.check_circle_outline),
+                      label: s.isBlurDetected
+                          ? 'Blur detected • Hold steady'
+                          : (s.isHdrOn
+                              ? 'HDR tone mapping active'
+                              : 'Document detected • Auto crop ready'),
+                      danger: s.isBlurDetected,
+                      hdrActive: s.isHdrOn && !s.isBlurDetected,
+                    ),
+                    if (s.isBlurDetected && s.isAutoDeblurOn) ...[
+                      const SizedBox(height: 6),
+                      _DeblurBadge(qualityScore: s.aiQualityScore),
+                    ],
+                  ],
                 ),
               ),
             ),
@@ -788,10 +820,11 @@ class _TopBar extends StatelessWidget {
           active: flashMode != 'off',
         ),
         _TopIcon(
-          icon: Icons.hd_rounded,
-          label: 'HD',
+          icon: Icons.hdr_on_rounded,
+          label: 'HDR',
           onTap: onHd,
           active: hdOn,
+          activeColor: hdOn ? const Color(0xFF6EC6FF) : null,
         ),
         _TopIcon(
           icon: Icons.auto_awesome_rounded,
@@ -828,12 +861,19 @@ class _TopIcon extends StatelessWidget {
   final String? label;
   final VoidCallback onTap;
   final bool active;
+  final Color? activeColor;
 
-  const _TopIcon({required this.icon, required this.onTap, this.label, this.active = false});
+  const _TopIcon({
+    required this.icon,
+    required this.onTap,
+    this.label,
+    this.active = false,
+    this.activeColor,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? const Color(0xFF21E56E) : Colors.white;
+    final color = active ? (activeColor ?? const Color(0xFF21E56E)) : Colors.white;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
       child: InkResponse(
@@ -1134,19 +1174,35 @@ class _StatusPill extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool danger;
+  final bool hdrActive;
 
-  const _StatusPill({required this.icon, required this.label, this.danger = false});
+  const _StatusPill({
+    required this.icon,
+    required this.label,
+    this.danger = false,
+    this.hdrActive = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? const Color(0xFFFF6060) : const Color(0xFF21E56E);
+    final color = danger
+        ? const Color(0xFFFF6060)
+        : (hdrActive ? const Color(0xFF6EC6FF) : const Color(0xFF21E56E));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(.45),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: color.withOpacity(.65)),
-        boxShadow: [BoxShadow(color: color.withOpacity(.18), blurRadius: 16)],
+        boxShadow: [
+          BoxShadow(color: color.withOpacity(.22), blurRadius: hdrActive ? 24 : 16),
+          if (hdrActive)
+            BoxShadow(
+              color: const Color(0xFF6EC6FF).withOpacity(.12),
+              blurRadius: 40,
+              spreadRadius: 2,
+            ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1155,9 +1211,41 @@ class _StatusPill extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: hdrActive ? const Color(0xFF6EC6FF) : Colors.white,
               fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeblurBadge extends StatelessWidget {
+  final int qualityScore;
+  const _DeblurBadge({required this.qualityScore});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(.50),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFFD94A).withOpacity(.55)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.auto_fix_high_rounded, color: Color(0xFFFFD94A), size: 13),
+          const SizedBox(width: 5),
+          Text(
+            'Auto-deblur active • Quality: $qualityScore/100',
+            style: const TextStyle(
+              color: Color(0xFFFFD94A),
+              fontSize: 10,
               fontWeight: FontWeight.w800,
             ),
           ),
