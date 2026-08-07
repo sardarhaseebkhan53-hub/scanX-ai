@@ -71,6 +71,7 @@ class ScannerState {
   final double maxZoomLevel;
   final bool isHdrOn;
   final bool isAiAssistOn;
+  final bool isAutoDeblurOn;
 
   const ScannerState({
     this.isInitialized = false,
@@ -100,6 +101,7 @@ class ScannerState {
     this.maxZoomLevel = 1.0,
     this.isHdrOn = false,
     this.isAiAssistOn = false,
+    this.isAutoDeblurOn = true,
   });
 
   ScannerState copyWith({
@@ -130,6 +132,7 @@ class ScannerState {
     double? maxZoomLevel,
     bool? isHdrOn,
     bool? isAiAssistOn,
+    bool? isAutoDeblurOn,
   }) {
     return ScannerState(
       isInitialized: isInitialized ?? this.isInitialized,
@@ -159,6 +162,7 @@ class ScannerState {
       maxZoomLevel: maxZoomLevel ?? this.maxZoomLevel,
       isHdrOn: isHdrOn ?? this.isHdrOn,
       isAiAssistOn: isAiAssistOn ?? this.isAiAssistOn,
+      isAutoDeblurOn: isAutoDeblurOn ?? this.isAutoDeblurOn,
     );
   }
 }
@@ -344,6 +348,11 @@ class ScannerController extends StateNotifier<ScannerState> {
   /// Toggle the contextual AI Assistant helper overlay / suggestions.
   void toggleAiAssist() => state = state.copyWith(isAiAssistOn: !state.isAiAssistOn);
 
+  /// Toggle automatic blur detection & correction. When enabled, blurry captures
+  /// are automatically re-taken (up to 2 retries) and the final image is run
+  /// through the deblur pipeline.
+  void toggleAutoDeblur() => state = state.copyWith(isAutoDeblurOn: !state.isAutoDeblurOn);
+
   /// Tap-to-focus + tap-to-expose at a normalized [0..1] point in the preview.
   Future<void> setFocusPoint(Offset point) async {
     if (_cameraController == null || !state.isInitialized) return;
@@ -404,24 +413,70 @@ class ScannerController extends StateNotifier<ScannerState> {
         if (!mounted) return null;
       }
 
-      if (_cameraController != null && state.isInitialized) {
-        final xFile = await _cameraController!.takePicture();
-        await _evaluateAndSetQualityScore(xFile.path);
-        if (!mounted) return xFile.path;
-        final updatedList = List<String>.from(state.capturedImages)..add(xFile.path);
-        state = state.copyWith(capturedImages: updatedList, isCapturing: false);
-        return xFile.path;
-      } else {
-        // Fallback to ImagePicker if camera hardware isn't initialized
-        final xFile = await _imagePicker.pickImage(source: ImageSource.gallery);
-        if (xFile != null) {
+      // Auto-retry loop: if blur correction is enabled and blur is detected,
+      // re-capture up to [maxBlurRetries] times to get a sharp shot.
+      const int maxBlurRetries = 2;
+      String? capturedPath;
+      bool wasBlurry = false;
+      final bool deblurEnabled = state.isAutoDeblurOn;
+
+      for (int attempt = 0; attempt <= maxBlurRetries; attempt++) {
+        if (_cameraController != null && state.isInitialized) {
+          final xFile = await _cameraController!.takePicture();
+          capturedPath = xFile.path;
           await _evaluateAndSetQualityScore(xFile.path);
           if (!mounted) return xFile.path;
-          final updatedList = List<String>.from(state.capturedImages)..add(xFile.path);
-          state = state.copyWith(capturedImages: updatedList, isCapturing: false);
-          return xFile.path;
+          wasBlurry = state.isBlurDetected;
+
+          // If sharp enough, or deblur disabled, or retries exhausted, stop
+          if (!deblurEnabled || !wasBlurry || attempt >= maxBlurRetries) break;
+
+          // Brief settle delay before re-capture to let motion stop
+          AppLogger.i('Blur detected on attempt ${attempt + 1}, re-capturing...', _tag);
+          await Future.delayed(const Duration(milliseconds: 350));
+          if (!mounted) return capturedPath;
+        } else {
+          // Fallback to ImagePicker if camera hardware isn't initialized
+          final xFile = await _imagePicker.pickImage(source: ImageSource.gallery);
+          if (xFile != null) {
+            capturedPath = xFile.path;
+            await _evaluateAndSetQualityScore(xFile.path);
+            if (!mounted) return xFile.path;
+            wasBlurry = state.isBlurDetected;
+          }
+          break; // no retry for gallery import
         }
       }
+
+      if (capturedPath == null) {
+        if (mounted) state = state.copyWith(isCapturing: false);
+        return null;
+      }
+
+      // Apply HDR + deblur pipeline post-capture if enabled
+      String finalPath = capturedPath;
+      if (state.isHdrOn || (deblurEnabled && wasBlurry)) {
+        final enhanced = await _imageProcessor.applyHdrAndDeblur(
+          File(capturedPath),
+          isBlurry: deblurEnabled && wasBlurry,
+        );
+        if (enhanced != null) {
+          finalPath = enhanced.path;
+          // Replace the raw capture with the processed version
+          final updatedList = List<String>.from(state.capturedImages)..add(finalPath);
+          state = state.copyWith(capturedImages: updatedList, isCapturing: false);
+          AppLogger.i(
+            'Capture finalised with HDR=${state.isHdrOn}, deblur=${deblurEnabled && wasBlurry} -> $finalPath',
+            _tag,
+          );
+          return finalPath;
+        }
+      }
+
+      if (!mounted) return finalPath;
+      final updatedList = List<String>.from(state.capturedImages)..add(finalPath);
+      state = state.copyWith(capturedImages: updatedList, isCapturing: false);
+      return finalPath;
     } catch (e) {
       AppLogger.e('Photo capture failed: $e', tag: _tag);
       if (mounted) state = state.copyWith(isCapturing: false, errorMessage: 'Failed to capture photo.');
